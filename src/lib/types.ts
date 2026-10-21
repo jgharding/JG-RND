@@ -183,6 +183,7 @@ export const CSV_COLUMNS = [
   'KEY ROOT NOTE',
   'KEY ROOT OCTAVE',
   'MUSICAL SCALE',
+  'TAGS',
 ] as const;
 
 export interface PatchRecord {
@@ -199,6 +200,7 @@ export interface PatchRecord {
   originalTracks?: TrackConfig[];
   proceduralLevels?: import('./midi/procedural').ProceduralPatchLevels;
   altered?: AlteredControls; // Saved blue/modified controls
+  tags?: string[]; // Free-text library tags (CSV: one quoted TAGS cell, comma separated)
 
   // Dedicated Database & CSV export properties:
   ch1Volume?: number;
@@ -804,3 +806,20 @@ export const FIRMWARE_PERMISSION_SWITCH = false;
 export const STOCK_FIRMWARE_FILE = 'RNDsynth-v1.3.bin';
 // Direct file from Cyma Forma's updater (listed in updater.cymaforma.com/data/rnd-synth/sources.json)
 export const STOCK_FIRMWARE_URL = 'https://updater.cymaforma.com/data/rnd-synth/RNDsynth-v1.3.bin';
+
+/**
+ * Splits user or CSV text into clean tags: comma or semicolon separated, trimmed, de-duplicated
+ * (case-insensitive, first spelling kept).
+ */
+export function parseTags(text: string | undefined): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const raw of (text ?? '').split(/[,;]/)) {
+    const tag = raw.trim().replace(/\s+/g, ' ');
+    if (tag && !seen.has(tag.toLowerCase())) {
+      seen.add(tag.toLowerCase());
+      tags.push(tag);
+    }
+  }
+  return tags;
+}

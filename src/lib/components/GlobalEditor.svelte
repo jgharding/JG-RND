@@ -383,13 +383,21 @@
 
   .controls-grid {
     display: grid;
-    grid-template-columns: 1.4fr 1.2fr 1fr 1.2fr;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 12px;
   }
 
-  @media (max-width: 1024px) {
+  /* KEY ROOT and MUSICAL SCALE move under TYPES and TEMPO from a 1634 px window down;
+     the single-column step follows the editor panel's width (container set in PatchEditor) */
+  @media (max-width: 1634px) {
     .controls-grid {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container editor (max-width: 480px) {
+    .controls-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 

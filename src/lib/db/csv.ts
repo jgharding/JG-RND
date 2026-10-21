@@ -10,6 +10,7 @@ import {
   getRerollCount,
   formatRerollCell,
   topSortOrders,
+  parseTags,
 } from '../types';
 import { hexToBytes, parseSysExMessage } from '../midi/sysex';
 import { calculateProceduralLevels } from '../midi/procedural';
@@ -99,6 +100,9 @@ export function exportPatchesToCsv(patches: PatchRecord[]): void {
       alt?.root !== undefined ? (ROOT_NOTES[alt.root] ?? String(alt.root)) : '',
       alt?.octave !== undefined ? String(alt.octave) : '',
       alt?.scale !== undefined ? (SCALES[alt.scale] ?? String(alt.scale)) : '',
+
+      // Tags: one quoted cell, comma separated
+      patch.tags && patch.tags.length > 0 ? escapeCsvField(patch.tags.join(', ')) : '',
     ];
 
     lines.push(row.join(','));
@@ -164,7 +168,7 @@ function isHeaderRow(cols: string[]): boolean {
 /**
  * Imports patches from a CSV string into IndexedDB and the patches store.
  * Supports:
- * - 38-column CSV with row 1 headers (current format; older 34-column files still import)
+ * - 39-column CSV with row 1 headers (current format, last column TAGS; older 38- and 34-column files still import)
  * - 2-column CSV (legacy format)
  * - 'append': Adds unique patches from CSV to the existing library.
  * - 'replace': Clears the existing library (IndexedDB & store) before adding the CSV patches.
@@ -373,6 +377,10 @@ export async function importPatchesFromCsv(
         proceduralLevels: procedural,
         altered,
       };
+
+      // TAGS: header column, else column 39 of a header-less 39-column file
+      const tags = parseTags(headerMap ? getVal('TAGS', -1, -1) : cols.length >= 39 ? cols[38] : undefined);
+      if (tags.length > 0) patch.tags = tags;
 
       patch = syncFlatFieldsFromAltered(patch);
       newPatches.push(patch);

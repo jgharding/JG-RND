@@ -19,6 +19,28 @@
   import GlobalEditor from "./GlobalEditor.svelte";
   import TrackEditor from "./TrackEditor.svelte";
   import Knob from "./Knob.svelte";
+  import { onMount } from "svelte";
+
+  // Top row layout by editor width (knobs never shrink):
+  //  - full: trigger button + all five mixer boxes on one row, reverb controls below
+  //  - MASTER drops into the space left of REVERB CONTROLS, button still full height
+  //  - narrower still: smaller button, knob groups wrap freely
+  const FULL_ROW_WIDTH = 1200; // editor px the full top row needs
+  const DROPPED_ROW_WIDTH = 1076; // editor px the top row needs with MASTER dropped
+  let editorEl: HTMLDivElement;
+  let editorWidth = $state(0);
+  const masterDropped = $derived(
+    editorWidth > 0 && editorWidth < FULL_ROW_WIDTH && editorWidth >= DROPPED_ROW_WIDTH,
+  );
+  const masterWrapped = $derived(editorWidth > 0 && editorWidth < DROPPED_ROW_WIDTH);
+
+  onMount(() => {
+    const observer = new ResizeObserver(([entry]) => {
+      editorWidth = entry.contentRect.width;
+    });
+    observer.observe(editorEl);
+    return () => observer.disconnect();
+  });
 
   function handleMasterVolumeChange(val: number) {
     midiManager.setMasterVolume(val);
@@ -120,9 +142,36 @@
   }
 </script>
 
-<div class="patch-editor-container">
+{#snippet masterBox()}
+  <div class="knobs-box master-box">
+          <div class="box-header">
+            <span class="box-title master-title">MASTER</span>
+            <span class="box-sub">MIDI CH 1</span>
+          </div>
+          <div class="box-knobs">
+            <Knob
+              label="VOLUME"
+              cc={7}
+              value={$masterVolumeStore}
+              defaultValue={100}
+              onchange={handleMasterVolumeChange}
+            />
+            <Knob
+              label="REV MULT"
+              cc={91}
+              value={$masterReverbMultStore}
+              defaultValue={64}
+              formatValue={(val) =>
+                (val <= 64 ? val / 64 : 1 + (val - 64) / 63).toFixed(2)}
+              onchange={handleMasterReverbMultChange}
+            />
+          </div>
+        </div>
+{/snippet}
+
+<div class="patch-editor-container" bind:this={editorEl}>
   <!-- Top Master Row: Big Button Setup + Knobs Container Box -->
-  <div class="master-row">
+  <div class="master-row" class:wrapped={masterWrapped}>
     <!-- Big Button Setup (Outside the knobs container) -->
     <div class="hardware-trigger-panel">
       <HardwareButton />
@@ -163,34 +212,16 @@
           </div>
         {/each}
 
-        <!-- MASTER Box -->
-        <div class="knobs-box master-box">
-          <div class="box-header">
-            <span class="box-title master-title">MASTER</span>
-            <span class="box-sub">MIDI CH 1</span>
-          </div>
-          <div class="box-knobs">
-            <Knob
-              label="VOLUME"
-              cc={7}
-              value={$masterVolumeStore}
-              defaultValue={100}
-              onchange={handleMasterVolumeChange}
-            />
-            <Knob
-              label="REV MULT"
-              cc={91}
-              value={$masterReverbMultStore}
-              defaultValue={64}
-              formatValue={(val) =>
-                (val <= 64 ? val / 64 : 1 + (val - 64) / 63).toFixed(2)}
-              onchange={handleMasterReverbMultChange}
-            />
-          </div>
-        </div>
+        {#if !masterDropped}
+          {@render masterBox()}
+        {/if}
       </div>
 
-      <!-- Lower Row: REVERB CONTROLS (CC 85-90) -->
+      <!-- Lower Row: REVERB CONTROLS (CC 85-90), with MASTER beside it when dropped -->
+      <div class="lower-row">
+      {#if masterDropped}
+        {@render masterBox()}
+      {/if}
       <div class="reverb-dsp-panel">
         <div class="reverb-panel-header">
           <div class="reverb-title-row">
@@ -278,6 +309,7 @@
           </div>
         </div>
       </div>
+      </div>
     </section>
   </div>
 
@@ -311,6 +343,8 @@
     overflow-y: auto;
     padding: 16px;
     background: var(--bg-workbench);
+    /* Sections reflow on the editor's own width (the librarian takes the rest of the window) */
+    container: editor / inline-size;
   }
 
   /* Master Row: Hardware Button Setup + Knobs Container Box */
@@ -342,18 +376,19 @@
     flex-shrink: 0;
   }
 
-  @media (max-width: 1200px) {
-    .master-row {
-      flex-wrap: wrap;
-    }
-  }
-
   .controls-mixer-area {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: nowrap;
     justify-content: flex-end;
+  }
+
+  .lower-row {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 8px;
   }
 
   .reverb-dsp-panel {
@@ -648,19 +683,64 @@
 
   .tracks-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
   }
 
-  @media (max-width: 1280px) {
+  @media (max-width: 1634px) {
     .tracks-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
-  @media (max-width: 680px) {
+  @container editor (max-width: 480px) {
     .tracks-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Too narrow to scale: a smaller trigger button beside the knobs box, whose knob groups wrap */
+  .master-row.wrapped .hardware-trigger-panel {
+    align-self: flex-start;
+    height: 220px;
+  }
+
+  .master-row.wrapped .master-knobs-section {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .master-row.wrapped .controls-mixer-area {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .master-row.wrapped .lower-row {
+    justify-content: stretch;
+  }
+
+  .master-row.wrapped .reverb-dsp-panel {
+    flex: 1;
+    width: auto;
+  }
+
+  .master-row.wrapped .reverb-knobs-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* Narrow editor: trigger button on top, knobs box full width below */
+  @container editor (max-width: 760px) {
+    .master-row.wrapped {
+      flex-direction: column;
+    }
+
+    .master-row.wrapped .hardware-trigger-panel {
+      align-self: center;
+    }
+
+    .master-row.wrapped .master-knobs-section {
+      flex: none;
     }
   }
 </style>

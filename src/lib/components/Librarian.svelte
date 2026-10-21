@@ -36,6 +36,7 @@
     getRerollCount,
     getRerollSeed,
     topSortOrders,
+    parseTags,
   } from "../types";
   import { exportPatchesToCsv, importPatchesFromCsv } from "../db/csv";
   import Icon from "./Icon.svelte";
@@ -226,7 +227,8 @@
       return (
         p.name.toLowerCase().includes(q) ||
         p.sysexHex.toLowerCase().includes(q) ||
-        p.seed.toString().includes(q)
+        p.seed.toString().includes(q) ||
+        (p.tags ?? []).some((tag) => tag.toLowerCase().includes(q))
       );
     }),
   );
@@ -240,6 +242,80 @@
 
   function handleCloseAlteredModal() {
     activeAlteredModalPatch = null;
+  }
+
+  // ===== Tags =====
+  // Tags are library metadata: editing them never changes a patch's saved / unsaved state.
+  let tagModalPatchId = $state<string | null>(null);
+  let tagDraft = $state<string[]>([]);
+  let tagInput = $state("");
+  let tagInputEl = $state<HTMLInputElement | null>(null);
+  const tagModalPatch = $derived(
+    $patchesStore.find((p) => p.id === tagModalPatchId) ?? null,
+  );
+  // Every tag already used in the library, offered as one-click suggestions
+  const allLibraryTags = $derived(
+    parseTags($patchesStore.flatMap((p) => p.tags ?? []).join(",")).sort(
+      (a, b) => a.localeCompare(b),
+    ),
+  );
+  const tagSuggestions = $derived(
+    allLibraryTags.filter(
+      (tag) => !tagDraft.some((d) => d.toLowerCase() === tag.toLowerCase()),
+    ),
+  );
+
+  function handleOpenTagModal(e: MouseEvent, patch: PatchRecord) {
+    e.stopPropagation();
+    tagModalPatchId = patch.id;
+    tagDraft = [...(patch.tags ?? [])];
+    tagInput = "";
+    queueMicrotask(() => tagInputEl?.focus());
+  }
+
+  function addDraftTags(text: string) {
+    tagDraft = parseTags([...tagDraft, text].join(","));
+    tagInput = "";
+  }
+
+  function removeDraftTag(tag: string) {
+    tagDraft = tagDraft.filter((t) => t !== tag);
+  }
+
+  function handleTagInputKeyDown(e: KeyboardEvent) {
+    if (e.key === "Enter" || e.key === "," || e.key === ";") {
+      e.preventDefault();
+      if (tagInput.trim()) addDraftTags(tagInput);
+      else if (e.key === "Enter") commitTagModal();
+    } else if (e.key === "Backspace" && !tagInput && tagDraft.length > 0) {
+      tagDraft = tagDraft.slice(0, -1);
+    }
+  }
+
+  function closeTagModal() {
+    tagModalPatchId = null;
+    tagDraft = [];
+    tagInput = "";
+  }
+
+  async function commitTagModal() {
+    const id = tagModalPatchId;
+    if (!id) return;
+    const tags = parseTags([...tagDraft, tagInput].join(","));
+    const value = tags.length > 0 ? tags : undefined;
+    closeTagModal();
+    patchesStore.update((list) =>
+      list.map((p) => (p.id === id ? { ...p, tags: value } : p)),
+    );
+    // Store the tags on the saved copy too, without saving any unsaved edits
+    try {
+      const saved = await getPatchFromDb(id);
+      if (saved) {
+        await savePatchToDb({ ...saved, tags: value });
+      }
+    } catch (err) {
+      console.error("Error saving tags to IndexedDB:", err);
+    }
   }
 
   function selectPatch(patch: PatchRecord) {
@@ -403,6 +479,56 @@
     }
   }
 
+  // ===== Long names =====
+  // A name too long for its field shows an ellipsis; hovering scrolls the full name
+  // back and forth (with a short pause at each end) until the pointer leaves.
+  const NAME_SCROLL_SPEED = 0.055; // px per ms
+  const NAME_SCROLL_PAUSE = 150; // ms at each end
+  let scrollingNameId = $state<string | null>(null);
+  let scrollingNameEl: HTMLInputElement | null = null;
+  let nameScrollFrame: number | null = null;
+
+  function startNameScroll(e: MouseEvent) {
+    const el = e.currentTarget as HTMLInputElement;
+    stopNameScroll();
+    if (document.activeElement === el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    if (max <= 1) return;
+    scrollingNameEl = el;
+    scrollingNameId = el.dataset.patchId ?? null;
+    let pos = 0;
+    let dir = 1;
+    let last = performance.now();
+    let holdUntil = last + NAME_SCROLL_PAUSE;
+    const step = (now: number) => {
+      const dt = now - last;
+      last = now;
+      if (now >= holdUntil) {
+        pos += dir * NAME_SCROLL_SPEED * dt;
+        if (pos >= max) {
+          pos = max;
+          dir = -1;
+          holdUntil = now + NAME_SCROLL_PAUSE;
+        } else if (pos <= 0) {
+          pos = 0;
+          dir = 1;
+          holdUntil = now + NAME_SCROLL_PAUSE;
+        }
+        el.scrollLeft = pos;
+      }
+      nameScrollFrame = requestAnimationFrame(step);
+    };
+    nameScrollFrame = requestAnimationFrame(step);
+  }
+
+  function stopNameScroll() {
+    if (nameScrollFrame !== null) cancelAnimationFrame(nameScrollFrame);
+    nameScrollFrame = null;
+    if (scrollingNameEl) scrollingNameEl.scrollLeft = 0;
+    scrollingNameEl = null;
+    scrollingNameId = null;
+  }
+
   // ===== Drag & drop reordering =====
   // A row only becomes draggable when the press starts outside the name field / buttons,
   // so renaming and text selection keep working.
@@ -486,9 +612,12 @@
     const fromTop = e.clientY - rect.top;
     const fromBottom = rect.bottom - e.clientY;
     if (fromTop < AUTO_SCROLL_ZONE) {
-      autoScrollSpeed = -AUTO_SCROLL_MAX_SPEED * (1 - Math.max(fromTop, 0) / AUTO_SCROLL_ZONE);
+      autoScrollSpeed =
+        -AUTO_SCROLL_MAX_SPEED * (1 - Math.max(fromTop, 0) / AUTO_SCROLL_ZONE);
     } else if (fromBottom < AUTO_SCROLL_ZONE) {
-      autoScrollSpeed = AUTO_SCROLL_MAX_SPEED * (1 - Math.max(fromBottom, 0) / AUTO_SCROLL_ZONE);
+      autoScrollSpeed =
+        AUTO_SCROLL_MAX_SPEED *
+        (1 - Math.max(fromBottom, 0) / AUTO_SCROLL_ZONE);
     } else {
       autoScrollSpeed = 0;
     }
@@ -516,7 +645,8 @@
 
   function handleListDragLeave(e: DragEvent) {
     // Leaving the list entirely (not just moving between rows) stops scrolling
-    if (!tableWrapper?.contains(e.relatedTarget as Node | null)) stopAutoScroll();
+    if (!tableWrapper?.contains(e.relatedTarget as Node | null))
+      stopAutoScroll();
   }
 
   async function handleDeleteRow(e: MouseEvent, patch: PatchRecord) {
@@ -636,7 +766,9 @@
 
   function handleWindowKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape") {
-      if (activeAlteredModalPatch) {
+      if (tagModalPatchId) {
+        closeTagModal();
+      } else if (activeAlteredModalPatch) {
         handleCloseAlteredModal();
       } else if (showImportModal) {
         showImportModal = false;
@@ -682,7 +814,7 @@
       <Icon name="search" size={13} color="#64748B" />
       <input
         type="text"
-        placeholder="Search name, SysEx hex, or seed..."
+        placeholder="Search name, tag, SysEx hex, or seed..."
         bind:value={searchQuery}
         class="search-input"
       />
@@ -852,64 +984,81 @@
                 </span>
               </td>
 
-              <!-- 2. Patch Name Column (Editable) -->
-              <td class="col-name">
-                <input
-                  type="text"
-                  value={patch.name}
-                  oninput={(e) =>
-                    handleNameInput(
-                      patch,
-                      (e.target as HTMLInputElement).value,
-                    )}
-                  onkeydown={(e) => handleNameKeyDown(e, patch)}
-                  onblur={(e) =>
-                    handleNameCommit(
-                      patch,
-                      (e.target as HTMLInputElement).value,
-                      e.target as HTMLInputElement,
-                    )}
-                  onclick={(e) => e.stopPropagation()}
-                  class="name-input"
-                  title="Click to rename (Enter or click away to save)"
-                />
-              </td>
+              <!-- 2. Patch Name (Editable) + 3. Actions: Altered, Tags, Save (Disk), Delete (Trash).
+                   One cell spanning both columns, so the name ends a fixed gap before the first button. -->
+              <td class="col-name-actions" colspan="2">
+                <div class="name-actions-row">
+                  <input
+                    type="text"
+                    value={patch.name}
+                    oninput={(e) =>
+                      handleNameInput(
+                        patch,
+                        (e.target as HTMLInputElement).value,
+                      )}
+                    onkeydown={(e) => handleNameKeyDown(e, patch)}
+                    onblur={(e) =>
+                      handleNameCommit(
+                        patch,
+                        (e.target as HTMLInputElement).value,
+                        e.target as HTMLInputElement,
+                      )}
+                    onclick={(e) => e.stopPropagation()}
+                    data-patch-id={patch.id}
+                    onmouseenter={startNameScroll}
+                    onmouseleave={stopNameScroll}
+                    onfocus={stopNameScroll}
+                    class="name-input"
+                    class:scrolling={scrollingNameId === patch.id}
+                    title="Click to rename (Enter or click away to save)"
+                  />
+                  <div class="actions-group">
+                    {#if shouldFlagAlteredControls(patch.altered)}
+                      <!-- Non-flashing blue icon directly to the left of the save button -->
+                      <button
+                        type="button"
+                        class="row-btn altered-btn"
+                        title="View altered controls for this patch"
+                        onclick={(e) => handleOpenAlteredModal(e, patch)}
+                      >
+                        <Icon name="sliders" size={13} />
+                      </button>
+                    {/if}
 
-              <!-- 3. Actions: Save (Disk), Delete (Trash) -->
-              <td class="col-actions">
-                <div class="actions-group">
-                  {#if shouldFlagAlteredControls(patch.altered)}
-                    <!-- Non-flashing blue icon directly to the left of the save button -->
+                    <!-- Tags -->
                     <button
                       type="button"
-                      class="row-btn altered-btn"
-                      title="View altered controls for this patch"
-                      onclick={(e) => handleOpenAlteredModal(e, patch)}
+                      class="row-btn tag-btn"
+                      class:has-tags={(patch.tags?.length ?? 0) > 0}
+                      title={patch.tags?.length
+                        ? `Tags: ${patch.tags.join(", ")}`
+                        : "Add tags"}
+                      onclick={(e) => handleOpenTagModal(e, patch)}
                     >
-                      <Icon name="sliders" size={13} />
+                      <Icon name="tag" size={12} />
                     </button>
-                  {/if}
 
-                  <!-- Save (Disk) -->
-                  <button
-                    class="row-btn save-btn"
-                    class:is-saved={patch.isSaved}
-                    title={patch.isSaved
-                      ? "Saved in IndexedDB"
-                      : "Save to IndexedDB"}
-                    onclick={(e) => handleSaveRow(e, patch)}
-                  >
-                    <Icon name={patch.isSaved ? "check" : "disk"} size={13} />
-                  </button>
+                    <!-- Save (Disk) -->
+                    <button
+                      class="row-btn save-btn"
+                      class:is-saved={patch.isSaved}
+                      title={patch.isSaved
+                        ? "Saved in IndexedDB"
+                        : "Save to IndexedDB"}
+                      onclick={(e) => handleSaveRow(e, patch)}
+                    >
+                      <Icon name={patch.isSaved ? "check" : "disk"} size={13} />
+                    </button>
 
-                  <!-- Delete (Trash) -->
-                  <button
-                    class="row-btn delete-btn"
-                    title="Delete patch"
-                    onclick={(e) => handleDeleteRow(e, patch)}
-                  >
-                    <Icon name="trash" size={13} />
-                  </button>
+                    <!-- Delete (Trash) -->
+                    <button
+                      class="row-btn delete-btn"
+                      title="Delete patch"
+                      onclick={(e) => handleDeleteRow(e, patch)}
+                    >
+                      <Icon name="trash" size={13} />
+                    </button>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -1075,6 +1224,94 @@
           type="button"
           class="btn-cancel"
           onclick={handleCloseAlteredModal}>DONE</button
+        >
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if tagModalPatch}
+  <div class="modal-backdrop">
+    <button
+      type="button"
+      class="modal-backdrop-hit"
+      onclick={closeTagModal}
+      aria-label="Dismiss dialog"
+      tabindex="-1"
+    ></button>
+    <div
+      class="modal-card tag-modal-card"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tag-modal-title"
+    >
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <Icon name="tag" size={15} color="var(--color-orange-text)" />
+          <h3 id="tag-modal-title" class="modal-title">
+            TAGS // {tagModalPatch.name}
+          </h3>
+        </div>
+        <button
+          type="button"
+          class="modal-close-btn"
+          onclick={closeTagModal}
+          title="Cancel">×</button
+        >
+      </div>
+
+      <div class="modal-body">
+        <div class="tag-editor">
+          {#each tagDraft as tag (tag)}
+            <span class="tag-chip">
+              {tag}
+              <button
+                type="button"
+                class="tag-chip-remove"
+                onclick={() => removeDraftTag(tag)}
+                aria-label="Remove tag {tag}">×</button
+              >
+            </span>
+          {/each}
+          <input
+            type="text"
+            class="tag-input"
+            bind:this={tagInputEl}
+            bind:value={tagInput}
+            onkeydown={handleTagInputKeyDown}
+            placeholder={tagDraft.length
+              ? "Add another tag..."
+              : "Type a tag, press Enter or comma..."}
+            spellcheck="false"
+            autocomplete="off"
+          />
+        </div>
+        <p class="modal-description tag-hint">
+          Separate tags with Enter or a comma. Tags are searchable in the
+          library search bar and are saved in the CSV TAGS column.
+        </p>
+        {#if tagSuggestions.length > 0}
+          <div class="tag-suggestions">
+            <span class="tag-suggest-label">LIBRARY TAGS</span>
+            {#each tagSuggestions as tag (tag)}
+              <button
+                type="button"
+                class="tag-suggestion"
+                onclick={() => addDraftTags(tag)}>+ {tag}</button
+              >
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick={closeTagModal}
+          >CANCEL</button
+        >
+        <button
+          type="button"
+          class="btn-cancel tag-done-btn"
+          onclick={commitTagModal}>DONE</button
         >
       </div>
     </div>
@@ -1385,6 +1622,14 @@
   .seed-telem-val.hex-val {
     color: #cbd5e1;
     font-size: 9px;
+    /* Selectable for copying (the librarian panel is otherwise user-select: none) */
+    user-select: text;
+    cursor: text;
+  }
+
+  .seed-telem-val.hex-val::selection {
+    background: var(--color-orange);
+    color: #0b0d10;
   }
 
   /* Table Container */
@@ -1418,21 +1663,32 @@
   }
 
   .col-sysex {
-    width: 36%;
+    width: 30%;
     padding-left: 12px;
     padding-right: 4px;
   }
 
   .col-name {
-    width: 47%;
+    width: 43%;
     padding-left: 0;
     padding-right: 6px;
   }
 
   .col-actions {
-    width: 17%;
+    width: 21%;
     text-align: right;
     padding-right: 12px;
+  }
+
+  .col-name-actions {
+    padding-left: 0;
+    padding-right: 12px;
+  }
+
+  .name-actions-row {
+    display: flex;
+    align-items: center;
+    gap: 6px; /* name field to first button */
   }
 
   .patch-row {
@@ -1492,9 +1748,17 @@
     padding: 4px 6px;
     border-radius: 3px;
     width: 100%;
+    flex: 1;
+    min-width: 0;
     box-sizing: border-box;
     outline: none;
+    text-overflow: ellipsis;
     transition: all 0.12s ease;
+  }
+
+  .name-input.scrolling,
+  .name-input:focus {
+    text-overflow: clip;
   }
 
   .name-input:focus {
@@ -1539,6 +1803,122 @@
     border-color: #38bdf8;
     background: #0284c7;
     box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+  }
+
+  .tag-btn {
+    color: #64748b;
+  }
+
+  .tag-btn.has-tags {
+    color: var(--color-orange);
+    border-color: rgba(255, 152, 0, 0.45);
+    background: rgba(255, 152, 0, 0.08);
+  }
+
+  .tag-btn:hover {
+    color: #f8fafc;
+    border-color: var(--color-orange);
+  }
+
+  /* Tag overlay */
+  .tag-modal-card {
+    max-width: 440px;
+  }
+
+  .tag-editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-box);
+    border-radius: 4px;
+  }
+
+  .tag-editor:focus-within {
+    border-color: var(--color-orange);
+  }
+
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px 2px 8px;
+    border-radius: 10px;
+    background: rgba(255, 152, 0, 0.12);
+    border: 1px solid rgba(255, 152, 0, 0.45);
+    color: var(--color-orange);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+  }
+
+  .tag-chip-remove {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0 2px;
+  }
+
+  .tag-chip-remove:hover {
+    color: #f8fafc;
+  }
+
+  .tag-input {
+    flex: 1;
+    min-width: 120px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #e2e8f0;
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-size: 12px;
+    padding: 2px;
+  }
+
+  .tag-hint {
+    margin-top: 8px;
+  }
+
+  .tag-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .tag-suggest-label {
+    font-family: "Chakra Petch", monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.6px;
+    margin-right: 2px;
+  }
+
+  .tag-suggestion {
+    background: #181b22;
+    border: 1px solid #272c37;
+    border-radius: 10px;
+    color: #94a3b8;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    cursor: pointer;
+  }
+
+  .tag-suggestion:hover {
+    color: var(--color-orange);
+    border-color: var(--color-orange);
+  }
+
+  .tag-done-btn {
+    color: var(--color-orange);
+    border-color: var(--color-orange);
   }
 
   .save-btn:not(.is-saved) {
@@ -1918,6 +2298,7 @@
   .modal-footer {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
     padding: 10px 16px;
     background: #141822;
     border-top: 1px solid #202735;
