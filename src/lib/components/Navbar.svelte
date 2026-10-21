@@ -28,7 +28,7 @@
   <div class="brand">
     <div class="brand-badge">JG-RND</div>
     <div class="brand-text">
-      <span class="brand-title">CYMA FORMA RND by CYMA FORMA & BAMBOUNOU</span>
+      <span class="brand-title">RND by CYMA FORMA & BAMBOUNOU</span>
       <span class="brand-sub">PATCH LIBRARIAN & EDITOR</span>
     </div>
   </div>
