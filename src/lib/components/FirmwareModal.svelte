@@ -2,11 +2,11 @@
   import {
     isFirmwareModalOpen,
     connectedFirmware,
-    storageCheckStore,
+    // storageCheckStore, // RND STORAGE CHECK disabled (no longer needed); uncomment with the panel below
   } from "../stores";
-  import { midiManager } from "../midi/midiManager";
+  // import { midiManager } from "../midi/midiManager"; // RND STORAGE CHECK disabled (no longer needed); uncomment with the panel below
   import {
-    describeTypeMask,
+    // describeTypeMask, // RND STORAGE CHECK disabled (no longer needed); uncomment with the panel below
     FIRMWARE_PERMISSION_SWITCH,
     LATEST_FIRMWARE_FILE,
     LATEST_FIRMWARE_STRING,
@@ -217,6 +217,7 @@
           </div>
         {/if}
 
+        <!-- RND STORAGE CHECK disabled (no longer needed); uncomment this block and its imports / styles to restore it.
         {#if $connectedFirmware && $connectedFirmware.patch >= 19}
           <div class="instructions-panel storage-check-panel">
             <div class="storage-check-header">
@@ -299,6 +300,7 @@
             {/if}
           </div>
         {/if}
+        -->
 
         <div class="instructions-panel">
           {#if FIRMWARE_PERMISSION_SWITCH}
@@ -698,6 +700,7 @@
     padding: 14px 18px;
   }
 
+  /* RND STORAGE CHECK disabled (no longer needed); uncomment to restore.
   .storage-check-panel {
     margin-bottom: 12px;
   }
@@ -749,6 +752,7 @@
     font-size: 0.75rem;
     color: #64748b;
   }
+  */
 
   .instructions-heading {
     font-family: "Chakra Petch", sans-serif;

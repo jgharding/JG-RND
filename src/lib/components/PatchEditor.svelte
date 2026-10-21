@@ -25,20 +25,45 @@
   //  - full: trigger button + all five mixer boxes on one row, reverb controls below
   //  - MASTER drops into the space left of REVERB CONTROLS, button still full height
   //  - narrower still: smaller button, knob groups wrap freely
-  const FULL_ROW_WIDTH = 1200; // editor px the full top row needs
-  const DROPPED_ROW_WIDTH = 1076; // editor px the top row needs with MASTER dropped
+  // The widths each layout needs are measured from the rendered row (button + gap + knobs
+  // box), so a layout only changes when the row really stops fitting. These are only the
+  // starting values used before the first measurement.
+  const ROW_GAP = 16; // .master-row gap
+  let fullRowWidth = $state(1197); // editor px the full top row needs
+  let droppedRowWidth = $state(1074); // editor px the top row needs with MASTER dropped
   let editorEl: HTMLDivElement;
+  let triggerPanelEl: HTMLDivElement;
+  let knobsSectionEl: HTMLElement;
   let editorWidth = $state(0);
   const masterDropped = $derived(
-    editorWidth > 0 && editorWidth < FULL_ROW_WIDTH && editorWidth >= DROPPED_ROW_WIDTH,
+    editorWidth > 0 && editorWidth < fullRowWidth && editorWidth >= droppedRowWidth,
   );
-  const masterWrapped = $derived(editorWidth > 0 && editorWidth < DROPPED_ROW_WIDTH);
+  const masterWrapped = $derived(editorWidth > 0 && editorWidth < droppedRowWidth);
+
+  // In the full and dropped layouts the knobs box keeps its natural width, so the row's
+  // needed width can be read straight off the elements (the wrapped layout is flexible).
+  function measureTopRow() {
+    if (masterWrapped || !triggerPanelEl || !knobsSectionEl) return;
+    const needed = Math.ceil(
+      triggerPanelEl.offsetWidth + ROW_GAP + knobsSectionEl.offsetWidth,
+    );
+    if (masterDropped) droppedRowWidth = needed;
+    else fullRowWidth = needed;
+  }
+
+  $effect(() => {
+    void editorWidth;
+    void masterDropped;
+    void masterWrapped;
+    measureTopRow();
+  });
 
   onMount(() => {
     const observer = new ResizeObserver(([entry]) => {
       editorWidth = entry.contentRect.width;
     });
     observer.observe(editorEl);
+    document.fonts?.ready.then(measureTopRow);
     return () => observer.disconnect();
   });
 
@@ -173,12 +198,12 @@
   <!-- Top Master Row: Big Button Setup + Knobs Container Box -->
   <div class="master-row" class:wrapped={masterWrapped}>
     <!-- Big Button Setup (Outside the knobs container) -->
-    <div class="hardware-trigger-panel">
+    <div class="hardware-trigger-panel" bind:this={triggerPanelEl}>
       <HardwareButton />
     </div>
 
     <!-- Knobs Container Box (Containing all channel and reverb knobs) -->
-    <section class="master-knobs-section">
+    <section class="master-knobs-section" bind:this={knobsSectionEl}>
       <!-- Upper Row: Mixer Controls (CH 1 - CH 4 & MASTER) -->
       <div class="controls-mixer-area">
         {#each [0, 1, 2, 3] as idx}
