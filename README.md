@@ -4,7 +4,23 @@ A single-page web-MIDI editor for Cyma Forma & Bambounou RND with custom firmwar
 
 Plug in the RND and the web interface should detect and select it, once you give it permissions. 
 
-Future versions are planned to include an entirely separate mode of my own, while still maintaining all original functionality at of 1.3. 
+Future versions are planned to include an entirely separate mode of my own, and other features.
+
+FIRMWARE PATCH AND EDITOR FEATURES:
+
+* Trigger patch generation from the interfacee
+* Manually enter seed hex in the interface
+* Grab the current seed from the device, or reset changes made in the interface
+* Export and Import patch libraries as CSV, which can be manaully edited easily
+* Edit store and recall BPM
+* Edit store and recall Key Root and Scale
+* Edit store and recall exact randomised re-rolls of Synth Engine sound
+* Edit store and recall altered synth engines (within the limits chosen by Cyma Forma)
+* 6 - Channel audio (Stereo mix on 1 and 2, raw instruments on 3-6)
+* Limit type of patch that is generated (Select any combination of Loop, Drone or Jingle (one shot), this will persist when the device is unplugged). Useful for disabling the one-shot generations.
+* Reverb controls including momentary and latched infinite feedback and more
+* Master reverb multiplier control
+* Master bus audio limiter in forfirmware ware to prevent reverb freeze hard clipping
 
 ---
 
