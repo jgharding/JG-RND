@@ -28,25 +28,93 @@
   // The widths each layout needs are measured from the rendered row (button + gap + knobs
   // box), so a layout only changes when the row really stops fitting. These are only the
   // starting values used before the first measurement.
-  const ROW_GAP = 16; // .master-row gap
-  let fullRowWidth = $state(1197); // editor px the full top row needs
-  let droppedRowWidth = $state(1074); // editor px the top row needs with MASTER dropped
+  const ROW_GAP = 10; // .master-row gap
+  let fullRowWidth = $state(1173); // editor px the full top row needs
+  let droppedRowWidth = $state(1056); // editor px the top row needs with MASTER dropped
   let editorEl: HTMLDivElement;
   let triggerPanelEl: HTMLDivElement;
   let knobsSectionEl: HTMLElement;
+  let editorScaleEl: HTMLDivElement;
+  let mixerAreaEl: HTMLDivElement;
+  let lowerRowEl: HTMLDivElement;
   let editorWidth = $state(0);
-  const masterDropped = $derived(
-    editorWidth > 0 && editorWidth < fullRowWidth && editorWidth >= droppedRowWidth,
+  // The trigger button is a square as tall as the knobs box (set explicitly: deriving its
+  // width from a stretched height is unreliable and collapsed it to 0 px wide)
+  let knobsBoxHeight = $state(0);
+
+  // Wider than the default 1920 x 1080 window, the WHOLE app (librarian, editor, header,
+  // status bar) scales up together as one piece, blending two things:
+  //  - it scales up evenly (x and y), but only as far as the window height allows, so the
+  //    editor content still fits without scrolling (never beyond what the width alone gives);
+  //  - any width left over widens the editor, up to MAX_LAYOUT_STRETCH x its 1920 width;
+  //    past that the editor content is centred rather than stretched further.
+  // The scale is applied as --app-scale on the root (see app.css), on top of --ui-scale.
+  const DEFAULT_WINDOW_WIDTH = 1920;
+  const MAX_LAYOUT_STRETCH = 1.35;
+  let uiScale = 1; // --ui-scale from app.css
+  let appliedScale = 1; // --app-scale currently on the root
+  let windowWidth = $state(DEFAULT_WINDOW_WIDTH);
+  let windowHeight = $state(1080);
+  // Height of the standard full editor layout (unscaled), the reference for the height limit.
+  // Only re-measured while unscaled in the full layout, so the scale can't feed back into it
+  // (that loop made some window sizes flicker). 852 px is the measured value.
+  let referenceHeight = $state(852);
+  // Height around the editor content (header, status bar, padding) in unscaled px; constant
+  let chromeHeight = $state(0);
+  const appScale = $derived.by(() => {
+    if (windowWidth <= DEFAULT_WINDOW_WIDTH || chromeHeight <= 0) return 1;
+    const widthScale = windowWidth / DEFAULT_WINDOW_WIDTH;
+    const heightScale = windowHeight / (uiScale * (referenceHeight * 1.01 + chromeHeight)); // 1%: rounding margin
+    // Rounded down (never overshoots the height) so re-layout can't make it hunt
+    return Math.floor(Math.min(widthScale, Math.max(1, heightScale)) * 100) / 100;
+  });
+  $effect(() => {
+    appliedScale = appScale;
+    document.documentElement.style.setProperty("--app-scale", String(appScale));
+  });
+  // Editor width at the default 1920 px window: every extra (unscaled) px goes to the editor
+  const baseWidth = $derived(
+    editorWidth -
+      Math.max(0, windowWidth / (uiScale * appScale) - DEFAULT_WINDOW_WIDTH / uiScale),
   );
-  const masterWrapped = $derived(editorWidth > 0 && editorWidth < droppedRowWidth);
+  // Widest the editor content is laid out; beyond it, it is centred
+  const maxLayoutWidth = $derived(
+    windowWidth > DEFAULT_WINDOW_WIDTH && baseWidth > 0
+      ? Math.round(baseWidth * MAX_LAYOUT_STRETCH)
+      : null,
+  );
+  // Width the editor's content is laid out in
+  const layoutWidth = $derived(Math.min(editorWidth, maxLayoutWidth ?? Infinity));
+
+  const masterDropped = $derived(
+    layoutWidth > 0 && layoutWidth < fullRowWidth && layoutWidth >= droppedRowWidth,
+  );
+  const masterWrapped = $derived(layoutWidth > 0 && layoutWidth < droppedRowWidth);
 
   // In the full and dropped layouts the knobs box keeps its natural width, so the row's
   // needed width can be read straight off the elements (the wrapped layout is flexible).
+  // The knobs box stretches to the row width, so its natural width is rebuilt from its
+  // content: the wider of the mixer row and the lower row, plus the box's padding and border.
+  const KNOBS_BOX_GAP = 6; // .controls-mixer-area / .lower-row gap
+  const contentRowWidth = (row: HTMLElement) => {
+    const items = Array.from(row.children) as HTMLElement[];
+    return (
+      items.reduce((sum, el) => sum + el.offsetWidth, 0) +
+      KNOBS_BOX_GAP * Math.max(0, items.length - 1)
+    );
+  };
+
   function measureTopRow() {
     if (masterWrapped || !triggerPanelEl || !knobsSectionEl) return;
-    const needed = Math.ceil(
-      triggerPanelEl.offsetWidth + ROW_GAP + knobsSectionEl.offsetWidth,
-    );
+    const box = getComputedStyle(knobsSectionEl);
+    const boxFrame =
+      parseFloat(box.paddingLeft) +
+      parseFloat(box.paddingRight) +
+      parseFloat(box.borderLeftWidth) +
+      parseFloat(box.borderRightWidth);
+    const knobsNatural =
+      boxFrame + Math.max(contentRowWidth(mixerAreaEl), contentRowWidth(lowerRowEl));
+    const needed = Math.ceil(triggerPanelEl.offsetWidth + ROW_GAP + knobsNatural);
     if (masterDropped) droppedRowWidth = needed;
     else fullRowWidth = needed;
   }
@@ -59,12 +127,35 @@
   });
 
   onMount(() => {
+    uiScale =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--ui-scale"),
+      ) || 1;
     const observer = new ResizeObserver(([entry]) => {
+      windowWidth = window.innerWidth;
+      windowHeight = window.innerHeight;
       editorWidth = entry.contentRect.width;
+      // Everything above and below the editor content, in unscaled px
+      chromeHeight =
+        window.innerHeight / (uiScale * appliedScale) - entry.contentRect.height;
     });
     observer.observe(editorEl);
+    const knobsObserver = new ResizeObserver(() => {
+      knobsBoxHeight = knobsSectionEl.offsetHeight;
+    });
+    knobsObserver.observe(knobsSectionEl);
+    const contentObserver = new ResizeObserver(() => {
+      if (appScale === 1 && !masterDropped && !masterWrapped) {
+        referenceHeight = editorScaleEl.offsetHeight;
+      }
+    });
+    contentObserver.observe(editorScaleEl);
     document.fonts?.ready.then(measureTopRow);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      knobsObserver.disconnect();
+      contentObserver.disconnect();
+    };
   });
 
   function handleMasterVolumeChange(val: number) {
@@ -195,17 +286,27 @@
 {/snippet}
 
 <div class="patch-editor-container" bind:this={editorEl}>
+  <div
+    class="editor-scale"
+    bind:this={editorScaleEl}
+    style:max-width={maxLayoutWidth ? `${maxLayoutWidth}px` : null}
+  >
   <!-- Top Master Row: Big Button Setup + Knobs Container Box -->
   <div class="master-row" class:wrapped={masterWrapped}>
     <!-- Big Button Setup (Outside the knobs container) -->
-    <div class="hardware-trigger-panel" bind:this={triggerPanelEl}>
+    <div
+      class="hardware-trigger-panel"
+      bind:this={triggerPanelEl}
+      style:width={!masterWrapped && knobsBoxHeight ? `${knobsBoxHeight}px` : null}
+      style:height={!masterWrapped && knobsBoxHeight ? `${knobsBoxHeight}px` : null}
+    >
       <HardwareButton />
     </div>
 
     <!-- Knobs Container Box (Containing all channel and reverb knobs) -->
     <section class="master-knobs-section" bind:this={knobsSectionEl}>
       <!-- Upper Row: Mixer Controls (CH 1 - CH 4 & MASTER) -->
-      <div class="controls-mixer-area">
+      <div class="controls-mixer-area" bind:this={mixerAreaEl}>
         {#each [0, 1, 2, 3] as idx}
           {@const isChannelActive = $activeTracks[idx]?.active ?? true}
           <div
@@ -243,7 +344,7 @@
       </div>
 
       <!-- Lower Row: REVERB CONTROLS (CC 85-90), with MASTER beside it when dropped -->
-      <div class="lower-row">
+      <div class="lower-row" bind:this={lowerRowEl}>
       {#if masterDropped}
         {@render masterBox()}
       {/if}
@@ -357,26 +458,33 @@
       {/each}
     </div>
   </section>
+  </div>
 </div>
 
 <style>
   .patch-editor-container {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
     height: 100%;
     overflow-y: auto;
+    /* The scrollbar's space is always reserved, so it appearing can't change the width */
+    scrollbar-gutter: stable;
     padding: 16px;
     background: var(--bg-workbench);
     /* Sections reflow on the editor's own width (the librarian takes the rest of the window) */
     container: editor / inline-size;
   }
 
+  .editor-scale {
+    margin: 0 auto; /* centred once the layout reaches its maximum width */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
   /* Master Row: Hardware Button Setup + Knobs Container Box */
   .master-row {
     display: flex;
     align-items: stretch;
-    gap: 16px;
+    gap: 10px; /* keep ROW_GAP in the script in step */
     flex-wrap: nowrap;
   }
 
@@ -392,19 +500,19 @@
     background: var(--bg-panel);
     border: 1px solid var(--border-box);
     border-radius: 8px;
-    padding: 14px 18px;
+    padding: 14px 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     gap: 8px;
     box-shadow: var(--box-shadow-panel);
-    flex-shrink: 0;
+    flex: 1 0 auto; /* fills the row (knob groups stay right-aligned), never shrinks */
   }
 
   .controls-mixer-area {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: nowrap;
     justify-content: flex-end;
   }
@@ -413,7 +521,7 @@
     display: flex;
     align-items: stretch;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 6px;
   }
 
   .reverb-dsp-panel {
@@ -712,7 +820,8 @@
     gap: 12px;
   }
 
-  @media (max-width: 1634px) {
+  /* 1634 px (unscaled) window = 1092 px editor */
+  @container editor (max-width: 1092px) {
     .tracks-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -727,6 +836,7 @@
   /* Too narrow to scale: a smaller trigger button beside the knobs box, whose knob groups wrap */
   .master-row.wrapped .hardware-trigger-panel {
     align-self: flex-start;
+    width: 220px;
     height: 220px;
   }
 

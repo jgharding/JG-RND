@@ -101,9 +101,12 @@
   .app-layout {
     display: flex;
     flex-direction: column;
-    width: 100vw;
-    height: 100vh;
+    /* Viewport units ignore the root zoom, so divide by it to fill the window exactly */
+    width: calc(100vw / (var(--ui-scale) * var(--app-scale)));
+    height: calc(100vh / (var(--ui-scale) * var(--app-scale)));
     overflow: hidden;
+    /* Breakpoints below use this container (in scaled px) instead of the raw window width */
+    container: app / inline-size;
     background: var(--bg-app);
   }
 
@@ -115,13 +118,13 @@
     background: var(--bg-workbench);
   }
 
-  @media (max-width: 1180px) {
+  @container app (max-width: 1180px) {
     .workbench {
       grid-template-columns: 460px 1fr;
     }
   }
 
-  @media (max-width: 860px) {
+  @container app (max-width: 860px) {
     .workbench {
       grid-template-columns: 1fr;
       grid-template-rows: 350px 1fr;

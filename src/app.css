@@ -1,4 +1,10 @@
 :root {
+  /* UI SCALE: the whole interface is drawn this much larger, like Chrome's zoom
+     (1.1 = 110%). Layout breakpoints follow it automatically. */
+  --ui-scale: 1.1;
+  /* Extra scale-up for windows larger than 1920 x 1080, set by PatchEditor (1 = none) */
+  --app-scale: 1;
+
   /* =========================================================================
      1. INTERFACE BACKDROP TINT & BRIGHTNESS CONTROLS
      Easily adjust the overall tint, saturation, and brightness across all boxes!
@@ -220,4 +226,9 @@ input:focus-visible,
 select:focus-visible {
   outline: 2px solid var(--color-orange);
   outline-offset: 1px;
+}
+
+/* Applies the UI scales to the whole app (viewport-sized boxes divide by them, see App.svelte) */
+html {
+  zoom: calc(var(--ui-scale) * var(--app-scale));
 }

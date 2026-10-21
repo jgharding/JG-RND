@@ -387,9 +387,9 @@
     gap: 12px;
   }
 
-  /* KEY ROOT and MUSICAL SCALE move under TYPES and TEMPO from a 1634 px window down;
+  /* KEY ROOT and MUSICAL SCALE move under TYPES and TEMPO from a 1634 px (unscaled) window down;
      the single-column step follows the editor panel's width (container set in PatchEditor) */
-  @media (max-width: 1634px) {
+  @container editor (max-width: 1092px) {
     .controls-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
