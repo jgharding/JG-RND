@@ -1,0 +1,223 @@
+:root {
+  /* =========================================================================
+     1. INTERFACE BACKDROP TINT & BRIGHTNESS CONTROLS
+     Easily adjust the overall tint, saturation, and brightness across all boxes!
+     
+     TINT HUE (0 - 360):
+       220 = Cool Industrial Slate / Steel (Default)
+       200 = Deep Sea / Cyan Slate
+       260 = Cyberpunk Indigo / Deep Violet
+       35  = Warm Vintage Console / Amber Charcoal
+       140 = Tactical Radar Green
+       0   = Warm Neutral Charcoal
+       
+     TINT SATURATION (0% - 100%):
+       0%  = Pure Neutral Achromatic Monochrome Grey
+       14% = Subtle Industrial Grey Tint (Default)
+       30%+ = More pronounced atmospheric tint
+       
+     TINT BRIGHTNESS SHIFT (-15% to +20%):
+       0%  = Balanced Dark Industrial (Default)
+       -4% = Deep OLED Black
+       +5% = Softer Elevated Studio Grey
+     ========================================================================= */
+  --backdrop-hue: 200;
+  --backdrop-sat: 10%;
+  --backdrop-brightness: 5%;
+
+  /* --- COMPUTED BACKDROP & BOX PALETTE --- */
+  /* Base App & Page Workbench backdrop */
+  --bg-app: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(5% + var(--backdrop-brightness)));
+  --bg-workbench: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(6.5% + var(--backdrop-brightness)));
+
+  /* Primary Container Panels (Knobs container, Global Editor, Track Strip, Librarian sidebar, Top navbar) */
+  --bg-panel: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(8.5% + var(--backdrop-brightness)));
+
+  /* Inner Nested Boxes & Displays (Control boxes, Reverb DSP box, Feedback box, Seed hex boxes, Table wrapper) */
+  --bg-sub-box: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(6% + var(--backdrop-brightness)));
+
+  /* Interactive Elements, Inputs, Buttons, Dropdowns & Badges */
+  --bg-surface: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(10.5% + var(--backdrop-brightness)));
+  --bg-surface-hover: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(14% + var(--backdrop-brightness)));
+
+  /* Borders: Matching tinted border hierarchy */
+  --border-subtle: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(13% + var(--backdrop-brightness)));
+  --border-box: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(17% + var(--backdrop-brightness)));
+  --border-hover: hsl(var(--backdrop-hue), var(--backdrop-sat), calc(24% + var(--backdrop-brightness)));
+
+  /* =========================================================================
+     2. ACCENT COLOR (ORANGE) HUE, SATURATION & BRIGHTNESS CONTROLS
+     Easily adjust the hue, saturation, and brightness across ALL orange elements:
+     - INF / LATCH buttons (borders, text, hover)
+     - Key Root, Octave, and Musical Scale dropdowns (borders, text)
+     - MUTE & SOLO buttons (borders, text, hover)
+     - REROLL & ENGINE ◀ / ▶ buttons (borders, text, hover)
+     - SYNTH ENGINE text in channel boxes
+     - GET/RESET SEED button
+     - Knob indicator arcs and master box accents
+     
+     ACCENT HUE (0 - 360):
+       18  = Vibrant RND Industrial Neon Orange (Default)
+       38  = Warm Amber / Golden Yellow
+       0   = Fire Red
+       140 = Cyberpunk Neon Green
+       190 = Electric Cyan / Blue
+       280 = Neon Purple
+       
+     ACCENT SATURATION (0% - 100%):
+       100% = Maximum Punch / Neon Intensity (Default)
+       70%  = Subtle / Pastel
+       
+     ACCENT BRIGHTNESS (0% - 100%):
+       56% = Pure Neon (Default)
+       65% = Lighter / Pastel
+       45% = Deeper / Richer
+     ========================================================================= */
+  --accent-hue: 18;
+  --accent-sat: 70%;
+  --accent-brightness: 50%;
+
+  /* =========================================================================
+     3. TEXT ACCENT TRIM CONTROLS (Hue, Saturation & Brightness Trim)
+     Allows fine-tuning text legibility, warmth, or brightness independently
+     from the box surrounds and button borders!
+     
+     Offsets relative to base accent:
+       --accent-text-hue-trim: 0;       (-60 to +60 hue shift, e.g. +8 for warmer golden text)
+       --accent-text-sat-trim: 0%;      (-50% to +20% sat shift, e.g. -10% for softer text)
+       --accent-text-bright-trim: 0%;   (-30% to +30% brightness shift, e.g. +8% for brighter crisp text)
+     ========================================================================= */
+  --accent-text-hue-trim: 0;
+  --accent-text-sat-trim: -20%;
+  --accent-text-bright-trim: 20%;
+
+  /* --- COMPUTED ACCENT (BORDERS, SURROUNDS, FILLS & GLOWS) --- */
+  --color-orange: hsl(var(--accent-hue), var(--accent-sat), var(--accent-brightness));
+  --color-orange-light: hsl(var(--accent-hue), var(--accent-sat), calc(var(--accent-brightness) + 8%));
+  --color-orange-dark: hsl(var(--accent-hue), var(--accent-sat), calc(var(--accent-brightness) - 12%));
+  --color-orange-glow: hsla(var(--accent-hue), var(--accent-sat), var(--accent-brightness), 0.4);
+
+  /* --- COMPUTED TEXT ACCENT (WITH TRIM CONTROLS APPLIED) --- */
+  --color-orange-text: hsl(calc(var(--accent-hue) + var(--accent-text-hue-trim)),
+      calc(var(--accent-sat) + var(--accent-text-sat-trim)),
+      calc(var(--accent-brightness) + var(--accent-text-bright-trim)));
+  --color-orange-text-light: hsl(calc(var(--accent-hue) + var(--accent-text-hue-trim)),
+      calc(var(--accent-sat) + var(--accent-text-sat-trim)),
+      calc(var(--accent-brightness) + var(--accent-text-bright-trim) + 8%));
+
+  /* =========================================================================
+     4. DROP SHADOW CONTROLS (Container Boxes & Main Button Complex)
+     Easily adjust the depth, strength/darkness, elevation offset, and blur
+     beneath all primary container boxes and the main button complex chassis!
+     
+     DROP SHADOW STRENGTH / OPACITY (0.0 to 1.0):
+       0.0  = Completely flat (no drop shadows)
+       0.25 = Subtle / soft studio elevation
+       0.45 = Balanced dark industrial depth (Default)
+       0.75 = Deep dramatic floating contrast
+       
+     VERTICAL ELEVATION OFFSET (Y):
+       Controls height/light angle off the workbench (e.g. 4px - 12px)
+       
+     BLUR RADIUS:
+       Controls softness/diffusion of the shadow edge (e.g. 10px - 28px)
+     ========================================================================= */
+  /* Primary Container Panels (Knobs container, Global Editor panel, Track strips, Top navbar) */
+  --shadow-strength: 0.1;
+  --shadow-y: 6px;
+  --shadow-blur: 10px;
+  --shadow-spread: 0px;
+
+  /* Main Button Complex (Heavy floating hardware chassis) */
+  --chassis-shadow-strength: 0.1;
+  --chassis-shadow-y: 8px;
+  --chassis-shadow-blur: 24px;
+  --chassis-shadow-spread: 0px;
+
+  /* Inner Container Inset Shadows (Channel controls CH 1-4 & Master boxes, Reverb controls box)
+     Set --inset-shadow-strength: 0.0 to make inner containers completely flat! */
+  --inset-shadow-strength: 0;
+  --inset-shadow-y: 2px;
+  --inset-shadow-blur: 4px;
+
+  /* --- COMPUTED DROP SHADOW DEFINITIONS --- */
+  --box-shadow-panel: 0 var(--shadow-y) var(--shadow-blur) var(--shadow-spread) rgba(0, 0, 0, var(--shadow-strength));
+
+  --box-shadow-chassis:
+    0 var(--chassis-shadow-y) var(--chassis-shadow-blur) var(--chassis-shadow-spread) rgba(0, 0, 0, var(--chassis-shadow-strength)),
+    0 calc(var(--chassis-shadow-y) * 0.3) calc(var(--chassis-shadow-blur) * 0.3) rgba(0, 0, 0, calc(var(--chassis-shadow-strength) * 0.65)),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.25);
+
+  --box-shadow-inset-box: inset 0 var(--inset-shadow-y) var(--inset-shadow-blur) rgba(0, 0, 0, var(--inset-shadow-strength));
+
+  /* Backward-compatible aliases */
+  --bg-primary: var(--bg-app);
+
+  --color-text-main: #f1f5f9;
+
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Industrial Dark Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f1115;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #252b36;
+  border-radius: 3px;
+  border: 1px solid #161920;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-orange);
+}
+
+/* Base Form Elements */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-orange);
+  outline-offset: 1px;
+}

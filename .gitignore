@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Scratch / temporary test scripts
+scratch/
+
+# Local session prompt log (excluded from git)
+PROMPT_LOG.md
+
+# Process documentation & exported snapshots
+Documentation Of Process/
+
+# Firmware patch working files and rules
+FIRMWARE PATCH WORKING FILES/
+JG-RND FIRMWARE PATCH/FIRMWARE PATCH WORKING FILES/
+FIRMWARE-PATCHING-RULES.md
+JG-RND FIRMWARE PATCH/FIRMWARE-PATCHING-RULES.md
+
+# Agent guidelines and session instructions
+AGENTS.md
+
+# Firmware binaries are not hosted while FIRMWARE_PERMISSION_SWITCH (src/lib/types.ts) is false.
+# Only public/firmware/jgpatch-0NN.json ships. Remove the public/firmware line to host the .bin again.
+public/firmware/*.bin
+JG-RND FIRMWARE PATCH/*.bin
