@@ -12,6 +12,7 @@ Future versions are planned to include an entirely separate mode of my own, and 
 * Manually enter seed hex in the interface.
 * Grab the current seed from the device, or reset changes made in the interface.
 * Export and Import patch libraries as CSV, which can be manually edited easily.
+* Reorder library patches with drag and drop.
 * Edit store and recall BPM.
 * Edit store and recall Key Root and Scale.
 * Edit store and recall exact randomised re-rolls of Synth Engine sound.
@@ -28,8 +29,9 @@ Future versions are planned to include an entirely separate mode of my own, and 
 * Feature parity with future official updates.
 * User editable and restorable Roles and Voice Mode.
 * My own different mode of use which is part designed and will be very different but also generative and enjoyable.
-* Tell me what you want.
 * Patch tags.
+* Tell me what you want.
+
 
 ## BUGS
 * Please report them to me so I can fix them!

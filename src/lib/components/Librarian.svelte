@@ -469,6 +469,54 @@
     draggingId = null;
     dragArmedId = null;
     dropTarget = null;
+    stopAutoScroll();
+  }
+
+  // Auto-scroll while dragging near the top or bottom edge of the list. Speed ramps up
+  // towards the edge; dragover fires only every ~50 ms, so a frame loop does the scrolling.
+  const AUTO_SCROLL_ZONE = 64; // px from the edge where scrolling starts
+  const AUTO_SCROLL_MAX_SPEED = 18; // px per frame at the very edge
+  let tableWrapper = $state<HTMLDivElement | null>(null);
+  let autoScrollSpeed = 0;
+  let autoScrollFrame: number | null = null;
+
+  function handleListDragOver(e: DragEvent) {
+    if (!draggingId || !tableWrapper) return;
+    const rect = tableWrapper.getBoundingClientRect();
+    const fromTop = e.clientY - rect.top;
+    const fromBottom = rect.bottom - e.clientY;
+    if (fromTop < AUTO_SCROLL_ZONE) {
+      autoScrollSpeed = -AUTO_SCROLL_MAX_SPEED * (1 - Math.max(fromTop, 0) / AUTO_SCROLL_ZONE);
+    } else if (fromBottom < AUTO_SCROLL_ZONE) {
+      autoScrollSpeed = AUTO_SCROLL_MAX_SPEED * (1 - Math.max(fromBottom, 0) / AUTO_SCROLL_ZONE);
+    } else {
+      autoScrollSpeed = 0;
+    }
+    if (autoScrollSpeed !== 0 && autoScrollFrame === null) {
+      autoScrollFrame = requestAnimationFrame(autoScrollStep);
+    }
+  }
+
+  function autoScrollStep() {
+    if (!tableWrapper || autoScrollSpeed === 0 || !draggingId) {
+      autoScrollFrame = null;
+      return;
+    }
+    tableWrapper.scrollTop += autoScrollSpeed;
+    autoScrollFrame = requestAnimationFrame(autoScrollStep);
+  }
+
+  function stopAutoScroll() {
+    autoScrollSpeed = 0;
+    if (autoScrollFrame !== null) {
+      cancelAnimationFrame(autoScrollFrame);
+      autoScrollFrame = null;
+    }
+  }
+
+  function handleListDragLeave(e: DragEvent) {
+    // Leaving the list entirely (not just moving between rows) stops scrolling
+    if (!tableWrapper?.contains(e.relatedTarget as Node | null)) stopAutoScroll();
   }
 
   async function handleDeleteRow(e: MouseEvent, patch: PatchRecord) {
@@ -753,7 +801,13 @@
   </div>
 
   <!-- Table Body / List -->
-  <div class="table-wrapper">
+  <div
+    class="table-wrapper"
+    bind:this={tableWrapper}
+    ondragover={handleListDragOver}
+    ondragleave={handleListDragLeave}
+    role="presentation"
+  >
     {#if filteredPatches.length === 0}
       <div class="empty-state">
         <div class="empty-icon-ring">
