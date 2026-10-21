@@ -26,6 +26,7 @@ import {
   rerolledTracksStore,
   setTrackRerollSeed,
   isPatchLoadingStore,
+  isSeedDumpPendingStore,
   markActivePatchDirty,
   applyAlteredControls,
   reverbDecayKnobStore,
@@ -98,6 +99,9 @@ class MidiManager {
   private resetSeedSessionUntil: number = 0;
   private resetSeedTimer: number | null = null;
   private currentLoadingPatchId: string | null = null;
+  // Set while a reloaded patch's seed dump is arriving, before any overrides are sent: the 0x22
+  // engines in that window are the seed's authentic engines.
+  private seedDumpPatchId: string | null = null;
   private incomingSysexResolvers: Array<() => void> = [];
   private versionQueryTimer: number | null = null;
   private versionRetryTimer: number | null = null;
@@ -213,11 +217,17 @@ class MidiManager {
 
       if (patch.sysexHex) {
         const bytes = hexToBytes(patch.sysexHex);
+        this.seedDumpPatchId = patchId;
+        isSeedDumpPendingStore.set(true);
         await this.rawSend(bytes);
       }
 
       // Wait for RND synth to completely finish generating and dumping patch telemetry
       await this.waitForPatchResponse();
+      if (this.seedDumpPatchId === patchId) {
+        this.seedDumpPatchId = null;
+        isSeedDumpPendingStore.set(false);
+      }
 
       // Guard: Did user select another patch while waiting?
       if (this.currentLoadingPatchId !== patchId) return;
@@ -381,6 +391,10 @@ class MidiManager {
       // A newer load manages the hold itself; only release if this load still owns it
       if (holdActive && this.currentLoadingPatchId === patchId) {
         this.rawSend(buildLoadHoldSysEx(false)).catch(() => {});
+      }
+      if (this.seedDumpPatchId === patchId) {
+        this.seedDumpPatchId = null;
+        isSeedDumpPendingStore.set(false);
       }
       if (this.currentLoadingPatchId === patchId) {
         isPatchLoadingStore.set(false);
@@ -903,19 +917,25 @@ class MidiManager {
         const isResetSession = this.isResetSeedPending || Date.now() < this.resetSeedSessionUntil;
         const isLoadingTrack = get(isPatchLoadingStore) || this.currentLoadingPatchId !== null;
         const isRerolled = getRerollCount(get(rerolledTracksStore)[tConfig.track]) > 0;
+        // A reloaded patch's seed dump reports the seed's own engines, so it corrects any stale
+        // stored baseline. Only a saved engine alteration or a reroll keeps the stored engine.
+        const isSeedDump = activeId !== null && this.seedDumpPatchId === activeId;
+        const hasAlteredEngine =
+          get(patchesStore).find((p) => p.id === activeId)?.altered?.engines?.[tConfig.track] !== undefined;
+        const keepStoredEngine = (stored: string | undefined) => {
+          if (!isLoadingTrack || !stored || stored === '—' || stored === '') return false;
+          if (isSeedDump) return isRerolled || hasAlteredEngine;
+          return isRerolled || stored !== tConfig.engine;
+        };
 
         activeTracks.update((list) => {
           const updated = normalizeTracks(list);
           const existing = updated[tConfig.track];
           const originalEngine =
-            isResetSession || !existing?.originalEngine || existing.originalEngine === '—'
+            isResetSession || isSeedDump || !existing?.originalEngine || existing.originalEngine === '—'
               ? tConfig.engine
               : existing.originalEngine;
-          const hasValidExisting = existing?.engine && existing.engine !== '—' && existing.engine !== '';
-          const engine =
-            isLoadingTrack && ((isRerolled && hasValidExisting) || (hasValidExisting && existing.engine !== tConfig.engine))
-              ? existing.engine
-              : tConfig.engine;
+          const engine = keepStoredEngine(existing?.engine) ? existing.engine : tConfig.engine;
           updated[tConfig.track] = {
             ...existing,
             ...tConfig,
@@ -934,6 +954,7 @@ class MidiManager {
               const origTracks = p.originalTracks ? [...p.originalTracks] : normalizeTracks([]);
               if (
                 isResetSession ||
+                isSeedDump ||
                 !origTracks[tConfig.track] ||
                 origTracks[tConfig.track].engine === '—' ||
                 !origTracks[tConfig.track].active
@@ -951,11 +972,7 @@ class MidiManager {
                 tConfig.engine;
 
               const curTrk = tracks[tConfig.track];
-              const hasValidSaved = curTrk?.engine && curTrk.engine !== '—' && curTrk.engine !== '';
-              const engine =
-                isLoadingTrack && ((isRerolled && hasValidSaved) || (hasValidSaved && curTrk.engine !== tConfig.engine))
-                  ? curTrk.engine
-                  : tConfig.engine;
+              const engine = keepStoredEngine(curTrk?.engine) ? curTrk.engine : tConfig.engine;
 
               tracks[tConfig.track] = {
                 ...tracks[tConfig.track],
@@ -971,8 +988,9 @@ class MidiManager {
 
         // If a reset seed session is active (brand new seed generated or reset seed requested),
         // populate the baseline with the true seed engines from the hardware.
+        // A reloaded patch's seed dump also sets them (it is the seed's own engine, before overrides).
         // Otherwise, DO NOT overwrite baseline engines on standard patch loading or button clicks!
-        if (isResetSession || !isEngineName(get(activePatchBaseline)?.enginePerTrack?.[tConfig.track])) {
+        if (isResetSession || isSeedDump || !isEngineName(get(activePatchBaseline)?.enginePerTrack?.[tConfig.track])) {
           activePatchBaseline.update((curr) => {
             if (!curr || curr.patchId !== activeId) return curr;
             const engines = [...curr.enginePerTrack];

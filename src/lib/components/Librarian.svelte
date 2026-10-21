@@ -16,6 +16,7 @@
     clearRerolledTracks,
     rerolledTracksStore,
     rerollSeedsStore,
+    seedEditorOpenStore,
   } from "../stores";
   import { calculateProceduralLevels } from "../midi/procedural";
   import {
@@ -243,8 +244,14 @@
 
   function selectPatch(patch: PatchRecord) {
     if (patch.altered?.rerolls) {
-      rerolledTracksStore.set(patch.altered.rerolls.map((r) => getRerollCount(r)));
-      rerollSeedsStore.set([0, 1, 2, 3].map((i) => getRerollSeed(patch.altered?.rerollSeeds?.[i]) ?? null));
+      rerolledTracksStore.set(
+        patch.altered.rerolls.map((r) => getRerollCount(r)),
+      );
+      rerollSeedsStore.set(
+        [0, 1, 2, 3].map(
+          (i) => getRerollSeed(patch.altered?.rerollSeeds?.[i]) ?? null,
+        ),
+      );
     } else {
       clearRerolledTracks();
     }
@@ -265,12 +272,47 @@
     };
     activeGlobalSettings.set({ octave: 4, ...g });
 
-    const trks = patch.tracks && patch.tracks.length > 0 ? patch.tracks : [
-      { track: 0, active: true, role: 0, mode: 0, engine: "FM", muted: false, soloed: false },
-      { track: 1, active: true, role: 1, mode: 0, engine: "Acid (303)", muted: false, soloed: false },
-      { track: 2, active: true, role: 2, mode: 1, engine: "Harmonic", muted: false, soloed: false },
-      { track: 3, active: true, role: 3, mode: 0, engine: "Noise", muted: false, soloed: false },
-    ];
+    const trks =
+      patch.tracks && patch.tracks.length > 0
+        ? patch.tracks
+        : [
+            {
+              track: 0,
+              active: true,
+              role: 0,
+              mode: 0,
+              engine: "FM",
+              muted: false,
+              soloed: false,
+            },
+            {
+              track: 1,
+              active: true,
+              role: 1,
+              mode: 0,
+              engine: "Acid (303)",
+              muted: false,
+              soloed: false,
+            },
+            {
+              track: 2,
+              active: true,
+              role: 2,
+              mode: 1,
+              engine: "Harmonic",
+              muted: false,
+              soloed: false,
+            },
+            {
+              track: 3,
+              active: true,
+              role: 3,
+              mode: 0,
+              engine: "Noise",
+              muted: false,
+              soloed: false,
+            },
+          ];
     const base = get(activePatchBaseline);
     activeTracks.set(
       normalizeTracks(trks).map((t, idx) => ({
@@ -281,7 +323,7 @@
           patch.originalTracks?.[idx]?.engine ||
           base?.enginePerTrack?.[idx] ||
           t.engine,
-      }))
+      })),
     );
 
     // If the patch has saved altered controls, apply them
@@ -298,7 +340,7 @@
         if (saved) {
           target = saved;
           patchesStore.update((list) =>
-            list.map((p) => (p.id === saved.id ? saved : p))
+            list.map((p) => (p.id === saved.id ? saved : p)),
           );
         }
       } catch (e) {
@@ -316,23 +358,31 @@
       if ($selectedPatchId === patch.id) {
         const altered = collectCurrentAlteredControls();
         const base = get(activePatchBaseline);
-        const origGlobals = current.originalGlobalSettings || (base && !base.provisional ? {
-          bpm: base.bpm ?? 120,
-          root: base.root ?? 0,
-          octave: base.octave ?? 4,
-          scale: base.scale ?? 0,
-          type: get(activeGlobalSettings).type ?? 0,
-        } : undefined);
+        const origGlobals =
+          current.originalGlobalSettings ||
+          (base && !base.provisional
+            ? {
+                bpm: base.bpm ?? 120,
+                root: base.root ?? 0,
+                octave: base.octave ?? 4,
+                scale: base.scale ?? 0,
+                type: get(activeGlobalSettings).type ?? 0,
+              }
+            : undefined);
 
         const liveTracks = get(activeTracks);
-        const origTracks = current.originalTracks || (base?.enginePerTrack ? base.enginePerTrack.map((eng, idx) => ({
-          track: idx,
-          active: liveTracks[idx]?.active ?? false,
-          role: idx,
-          mode: 0,
-          engine: eng || 'FM',
-          originalEngine: eng || 'FM',
-        })) : undefined);
+        const origTracks =
+          current.originalTracks ||
+          (base?.enginePerTrack
+            ? base.enginePerTrack.map((eng, idx) => ({
+                track: idx,
+                active: liveTracks[idx]?.active ?? false,
+                role: idx,
+                mode: 0,
+                engine: eng || "FM",
+                originalEngine: eng || "FM",
+              }))
+            : undefined);
 
         current = {
           ...current,
@@ -381,7 +431,10 @@
     e.preventDefault();
     if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    dropTarget = { id: patch.id, after: e.clientY > rect.top + rect.height / 2 };
+    dropTarget = {
+      id: patch.id,
+      after: e.clientY > rect.top + rect.height / 2,
+    };
   }
 
   async function handleDrop(e: DragEvent, patch: PatchRecord) {
@@ -404,7 +457,9 @@
     const renumbered = list.map((p, i) => ({ ...p, sortOrder: i }));
     patchesStore.set(renumbered);
     try {
-      await updatePatchSortOrdersInDb(renumbered.map((p) => ({ id: p.id, sortOrder: p.sortOrder })));
+      await updatePatchSortOrdersInDb(
+        renumbered.map((p) => ({ id: p.id, sortOrder: p.sortOrder })),
+      );
     } catch (err) {
       console.error("Error saving library order to IndexedDB:", err);
     }
@@ -423,7 +478,8 @@
       // Neighbour in the list as displayed: the row below, or the row above if it was the bottom row
       const visible = filteredPatches;
       const idx = visible.findIndex((p) => p.id === patch.id);
-      const neighbour = idx >= 0 ? (visible[idx + 1] ?? visible[idx - 1]) : undefined;
+      const neighbour =
+        idx >= 0 ? (visible[idx + 1] ?? visible[idx - 1]) : undefined;
 
       await deletePatchFromDb(patch.id);
       patchesStore.update((list) => list.filter((p) => p.id !== patch.id));
@@ -472,7 +528,11 @@
     const current = $patchesStore.find((p) => p.id === patch.id) || patch;
     if (current.isSaved && finalName === patch.name) return;
 
-    const updated: PatchRecord = syncFlatFieldsFromAltered({ ...current, name: finalName, isSaved: true });
+    const updated: PatchRecord = syncFlatFieldsFromAltered({
+      ...current,
+      name: finalName,
+      isSaved: true,
+    });
     patchesStore.update((list) =>
       list.map((p) => (p.id === patch.id ? updated : p)),
     );
@@ -586,53 +646,73 @@
     </div>
 
     <!-- Manual Seed Hex Editor (5 Evenly Spaced Two-Character Boxes) -->
-    <div class="seed-hex-editor">
-      <div class="seed-editor-header">
-        <span class="seed-header-title">CURRENT SEED HEX</span>
-        <span class="seed-header-sub">F0 6F 62 78 10 [BYTES 0–4] F7</span>
-      </div>
-      <div class="seed-boxes-row">
-        {#each seedBytes as byteVal, idx}
-          <div class="seed-box-col">
-            <span class="seed-byte-num">B{idx}</span>
-            <input
-              id="seed-byte-{idx}"
-              type="text"
-              maxlength="2"
-              class="seed-byte-input"
-              value={byteVal}
-              onfocus={() => handleByteFocus(idx)}
-              oninput={(e) => handleByteInput(idx, e)}
-              onkeydown={(e) => handleByteKeyDown(idx, e)}
-              onblur={handleByteBlur}
-              title="Byte {idx} (00–{idx === 4
-                ? '0F'
-                : '7F'}). Press Enter or click away to send to RND & add to librarian."
-              spellcheck="false"
-              autocomplete="off"
-            />
+    <div class="seed-hex-editor" class:open={$seedEditorOpenStore}>
+      <button
+        type="button"
+        class="seed-editor-header"
+        onclick={() => seedEditorOpenStore.update((open) => !open)}
+        aria-expanded={$seedEditorOpenStore}
+        aria-controls="seed-editor-body"
+        title={$seedEditorOpenStore
+          ? "Hide seed hex editor"
+          : "Show seed hex editor"}
+      >
+        <span class="seed-header-title">
+          <span class="seed-chevron" aria-hidden="true">▸</span>
+          CURRENT SEED HEX
+        </span>
+        {#if $seedEditorOpenStore}
+          <span class="seed-header-sub">F0 6F 62 78 10 [BYTES 0–4] F7</span>
+        {:else}
+          <span class="seed-header-compact">{seedBytes.join(" ")}</span>
+        {/if}
+      </button>
+      <div class="seed-editor-slide" id="seed-editor-body">
+        <div class="seed-editor-body" inert={!$seedEditorOpenStore}>
+          <div class="seed-boxes-row">
+            {#each seedBytes as byteVal, idx}
+              <div class="seed-box-col">
+                <span class="seed-byte-num">B{idx}</span>
+                <input
+                  id="seed-byte-{idx}"
+                  type="text"
+                  maxlength="2"
+                  class="seed-byte-input"
+                  value={byteVal}
+                  onfocus={() => handleByteFocus(idx)}
+                  oninput={(e) => handleByteInput(idx, e)}
+                  onkeydown={(e) => handleByteKeyDown(idx, e)}
+                  onblur={handleByteBlur}
+                  title="Byte {idx} (00–{idx === 4
+                    ? '0F'
+                    : '7F'}). Press Enter or click away to send to RND & add to librarian."
+                  spellcheck="false"
+                  autocomplete="off"
+                />
+              </div>
+            {/each}
           </div>
-        {/each}
-      </div>
 
-      <!-- Telemetry Info Row: 32-BIT SEED & FULL PATCH SysEx HEX -->
-      <div class="seed-telemetry-row">
-        <div class="seed-telem-item">
-          <span class="seed-telem-label">32-BIT SEED</span>
-          <span class="seed-telem-val seed-val">
-            {$selectedPatch
-              ? `0x${$selectedPatch.seed.toString(16).toUpperCase().padStart(8, "0")} (${$selectedPatch.seed})`
-              : "—"}
-          </span>
-        </div>
+          <!-- Telemetry Info Row: 32-BIT SEED & FULL PATCH SysEx HEX -->
+          <div class="seed-telemetry-row">
+            <div class="seed-telem-item">
+              <span class="seed-telem-label">32-BIT SEED</span>
+              <span class="seed-telem-val seed-val">
+                {$selectedPatch
+                  ? `0x${$selectedPatch.seed.toString(16).toUpperCase().padStart(8, "0")} (${$selectedPatch.seed})`
+                  : "—"}
+              </span>
+            </div>
 
-        <div class="seed-telem-item right-item">
-          <span class="seed-telem-label">FULL PATCH SysEx HEX</span>
-          <span class="seed-telem-val hex-val">
-            {$selectedPatch
-              ? $selectedPatch.sysexHex
-              : "Waiting for hardware transmission..."}
-          </span>
+            <div class="seed-telem-item right-item">
+              <span class="seed-telem-label">FULL PATCH SysEx HEX</span>
+              <span class="seed-telem-val hex-val">
+                {$selectedPatch
+                  ? $selectedPatch.sysexHex
+                  : "Waiting for hardware transmission..."}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -700,7 +780,8 @@
               class="patch-row"
               class:selected={$selectedPatchId === patch.id}
               class:dragging={draggingId === patch.id}
-              class:drop-above={dropTarget?.id === patch.id && !dropTarget.after}
+              class:drop-above={dropTarget?.id === patch.id &&
+                !dropTarget.after}
               class:drop-below={dropTarget?.id === patch.id && dropTarget.after}
               draggable={dragArmedId === patch.id}
               onpointerdown={(e) => handleRowPointerDown(e, patch)}
@@ -927,14 +1008,19 @@
           </table>
         {:else}
           <div class="no-altered-state">
-            <p>No modified controls found for this patch. All parameters match seed baseline.</p>
+            <p>
+              No modified controls found for this patch. All parameters match
+              seed baseline.
+            </p>
           </div>
         {/if}
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick={handleCloseAlteredModal}
-          >DONE</button
+        <button
+          type="button"
+          class="btn-cancel"
+          onclick={handleCloseAlteredModal}>DONE</button
         >
       </div>
     </div>
@@ -953,12 +1039,14 @@
   }
 
   .librarian-header {
+    --header-gap: 8px; /* space between the header blocks */
+    --search-to-seed-gap: 0px; /* space between the search bar and CURRENT SEED HEX */
     padding: 14px 16px;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--header-gap);
   }
 
   .title-row {
@@ -1050,24 +1138,88 @@
     background: var(--bg-sub-box);
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
-    padding: 8px 10px 10px;
+    padding: 6px 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    /* Replaces the header gap above this panel with --search-to-seed-gap */
+    margin-top: calc(var(--search-to-seed-gap) - var(--header-gap));
   }
 
   .seed-editor-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
   }
 
   .seed-header-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-family: "Chakra Petch", monospace;
     font-size: 9.5px;
     font-weight: 700;
     color: #94a3b8;
     letter-spacing: 0.8px;
+  }
+
+  .seed-editor-header:hover .seed-header-title,
+  .seed-editor-header:focus-visible .seed-header-title {
+    color: var(--color-orange);
+  }
+
+  .seed-chevron {
+    display: inline-block;
+    color: var(--color-orange);
+    font-size: 10px;
+    transition: transform 0.2s ease;
+  }
+
+  .seed-hex-editor.open .seed-chevron {
+    transform: rotate(90deg);
+  }
+
+  .seed-header-compact {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--color-orange);
+    letter-spacing: 1px;
+  }
+
+  /* Slides the editor open and closed (grid row 0fr <-> 1fr animates to the content height) */
+  .seed-editor-slide {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.22s ease;
+  }
+
+  .seed-hex-editor.open .seed-editor-slide {
+    grid-template-rows: 1fr;
+  }
+
+  .seed-editor-body {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .seed-hex-editor.open .seed-editor-body {
+    padding-top: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seed-editor-slide,
+    .seed-chevron {
+      transition: none;
+    }
   }
 
   .seed-header-sub {
@@ -1740,7 +1892,9 @@
   .altered-modal-card {
     max-width: 500px;
     border-color: rgba(56, 189, 248, 0.3);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.15);
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.8),
+      0 0 16px rgba(56, 189, 248, 0.15);
   }
 
   .altered-modal-body {

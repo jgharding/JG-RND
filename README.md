@@ -6,21 +6,34 @@ Plug in the RND and the web interface should detect and select it, once you give
 
 Future versions are planned to include an entirely separate mode of my own, and other features.
 
-FIRMWARE PATCH AND EDITOR FEATURES:
+## FIRMWARE PATCH AND EDITOR FEATURES:
 
-* Trigger patch generation from the interfacee
-* Manually enter seed hex in the interface
-* Grab the current seed from the device, or reset changes made in the interface
-* Export and Import patch libraries as CSV, which can be manaully edited easily
-* Edit store and recall BPM
-* Edit store and recall Key Root and Scale
-* Edit store and recall exact randomised re-rolls of Synth Engine sound
-* Edit store and recall altered synth engines (within the limits chosen by Cyma Forma)
+* Trigger patch generation from the interface.
+* Manually enter seed hex in the interface.
+* Grab the current seed from the device, or reset changes made in the interface.
+* Export and Import patch libraries as CSV, which can be manually edited easily.
+* Edit store and recall BPM.
+* Edit store and recall Key Root and Scale.
+* Edit store and recall exact randomised re-rolls of Synth Engine sound.
+* Edit store and recall altered synth engines (within the limits chosen by Cyma Forma).
 * 6 - Channel audio (Stereo mix on 1 and 2, raw instruments on 3-6)
-* Limit type of patch that is generated (Select any combination of Loop, Drone or Jingle (one shot), this will persist when the device is unplugged). Useful for disabling the one-shot generations.
-* Reverb controls including momentary and latched infinite feedback and more
-* Master reverb multiplier control
-* Master bus audio limiter in forfirmware ware to prevent reverb freeze hard clipping
+* Limit type of patch that is generated- select any combination of Loop, Drone or Jingle (one shot), this will persist when the device is unplugged. Useful for disabling the one-shot generations.
+* Reverb controls including momentary and latched infinite feedback and more.
+* Master reverb multiplier control .
+* Master-bus audio limiter in firmware ware to prevent reverb freeze hard clipping.
+
+
+## ROADMAP
+* Desktop editor, compatibility with iOS and iPadOS.
+* Feature parity with future official updates.
+* User editable and restorable Roles and Voice Mode.
+* My own different mode of use which is part designed and will be very different but also generative and enjoyable.
+* Tell me what you want.
+* Patch tags.
+
+## BUGS
+* Please report them to me so I can fix them!
+
 
 ---
 
@@ -70,10 +83,3 @@ The big orange numbers are the part of the SysEx string that generates the rando
 ## PATCH EDITOR
 I've yet to write up these instructions in text form and don't want to use AI for it, but there's a video tutorial here:
 
-## BUGS
-* Please report them to me so I can fix them!
-
-## ROADMAP
-* User editable and restorable Roles and Voice Mode.
-* My own different mode of use which is part designed and will be very different but also generative and enjoyable.
-* Tell me what you want.

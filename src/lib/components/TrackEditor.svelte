@@ -6,6 +6,7 @@
     rerolledTracksStore,
     markTrackRerolled,
     markActivePatchDirty,
+    isSeedDumpPendingStore,
   } from "../stores";
   import { midiManager } from "../midi/midiManager";
   import {
@@ -36,16 +37,21 @@
     },
   );
 
+  const isRerolled = $derived(getRerollCount($rerolledTracksStore[trackIndex]) > 0);
+
+  // Until a recalled patch's seed dump confirms its engines, only a saved engine change or a reroll
+  // shows blue, so stale stored engines don't flash as edits.
   const isEngineChanged = $derived(
-    $activePatchBaseline?.enginePerTrack?.[trackIndex] !== undefined &&
+    ($isSeedDumpPendingStore
+      ? isRerolled || $selectedPatch?.altered?.engines?.[trackIndex] !== undefined
+      : true) &&
+      $activePatchBaseline?.enginePerTrack?.[trackIndex] !== undefined &&
       track.active &&
       track.engine !== "—" &&
       $activePatchBaseline.enginePerTrack[trackIndex] !== "" &&
       $activePatchBaseline.enginePerTrack[trackIndex] !== "—" &&
       resolveEngineIndex(track.engine) !== resolveEngineIndex($activePatchBaseline.enginePerTrack[trackIndex]),
   );
-
-  const isRerolled = $derived(getRerollCount($rerolledTracksStore[trackIndex]) > 0);
 
   const originalEngine = $derived(
     pickOriginalEngine(

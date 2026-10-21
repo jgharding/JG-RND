@@ -89,6 +89,9 @@ export const reverbDecayKnobStore = writable<number>(83);  // DECAY knob positio
 // True while librarian is actively loading a patch (prevents accidental dirty marking)
 export const isPatchLoadingStore = writable<boolean>(false);
 
+// True while a recalled patch's seed dump is arriving (its engines are not confirmed yet)
+export const isSeedDumpPendingStore = writable<boolean>(false);
+
 // Procedural patch calculation store (calculated from active patch seed via MT19937)
 export const activeProceduralLevels = writable<import('./midi/procedural').ProceduralPatchLevels | null>(null);
 
@@ -513,6 +516,11 @@ function writeStorage(key: string, value: string): void {
     // Persistence is a convenience only
   }
 }
+
+// CURRENT SEED HEX panel in the librarian: open or collapsed (collapsed by default)
+const SEED_EDITOR_OPEN_KEY = 'rnd_seed_editor_open';
+export const seedEditorOpenStore = writable<boolean>(readStorage(SEED_EDITOR_OPEN_KEY) === '1');
+seedEditorOpenStore.subscribe((open) => writeStorage(SEED_EDITOR_OPEN_KEY, open ? '1' : '0'));
 
 // TYPES TO GENERATE (CC 14 mask: bit 0 = Looping, bit 1 = Drone, bit 2 = Jingle)
 const TYPES_TO_GENERATE_KEY = 'rnd_type_filter';

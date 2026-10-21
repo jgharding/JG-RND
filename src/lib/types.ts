@@ -790,8 +790,8 @@ export interface ConnectedFirmwareInfo {
 
 // Bundled firmware (public/firmware). Bump the first two together when shipping a new JGpatch build;
 // the file names follow from them.
-export const LATEST_FIRMWARE_PATCH = 22;
-export const LATEST_FIRMWARE_STRING = 'v1.3-JGpatch-022';
+export const LATEST_FIRMWARE_PATCH = 23;
+export const LATEST_FIRMWARE_STRING = 'v1.3-JGpatch-023';
 export const LATEST_FIRMWARE_FILE = `RNDsynth-${LATEST_FIRMWARE_STRING}.bin`;
 export const LATEST_FIRMWARE_PATCH_FILE = `jgpatch-${String(LATEST_FIRMWARE_PATCH).padStart(3, '0')}.json`;
 
