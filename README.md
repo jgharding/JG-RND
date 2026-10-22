@@ -8,34 +8,31 @@ Future versions are planned to include an entirely separate mode of my own, and 
 
 ## FIRMWARE PATCH AND EDITOR FEATURES:
 
-* Trigger patch generation from the interface.
-* Manually enter seed hex in the interface.
-* Grab the current seed from the device, or reset changes made in the interface.
-* Export and Import patch libraries as CSV, which can be manually edited easily.
-* Reorder library patches with drag and drop.
-* Edit store and recall BPM.
-* Edit store and recall Key Root and Scale.
-* Edit store and recall exact randomised re-rolls of Synth Engine sound.
-* Edit store and recall altered synth engines (within the limits chosen by Cyma Forma).
 * 6 - Channel audio (Stereo mix on 1 and 2, raw instruments on 3-6)
 * Limit type of patch that is generated- select any combination of Loop, Drone or Jingle (one shot), this will persist when the device is unplugged. Useful for disabling the one-shot generations.
 * Reverb controls including momentary and latched infinite feedback and more.
 * Master reverb multiplier control .
-* Master-bus audio limiter in firmware ware to prevent reverb freeze hard clipping.
-
+* Master-bus audio limiter in firmware to prevent reverb freeze hard clipping.
+* Trigger patch generation from the interface.
+* Manually enter seed hex in the interface.
+* Store edited parameters to the library and recall them.
+* Grab the current seed from the device, or reset changes made in the interface.
+* Export and Import patch libraries as CSV, which can be manually edited easily.
+* Reorder library patches with drag and drop.
+* Patch tags that are searchable.
+* Edit store and recall BPM.
+* Edit store and recall Key Root and Scale.
+* Edit store and recall exact randomised re-rolls of Synth Engine sound.
+* Edit store and recall altered synth engines (within the limits chosen by Cyma Forma).
 
 ## ROADMAP
-* Desktop editor, compatibility with iOS and iPadOS.
-* Feature parity with future official updates.
-* User editable and restorable Roles and Voice Mode.
+* Compatibility with iOS and iPadOS.
+* Feature parity with future official firmware updates.
 * My own different mode of use which is part designed and will be very different but also generative and enjoyable.
-* Patch tags.
 * Tell me what you want.
-
 
 ## BUGS
 * Please report them to me so I can fix them!
-
 
 ---
 
