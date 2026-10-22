@@ -102,8 +102,8 @@
     display: flex;
     flex-direction: column;
     /* Viewport units ignore the root zoom, so divide by it to fill the window exactly */
-    width: calc(100vw / (var(--ui-scale) * var(--app-scale)));
-    height: calc(100vh / (var(--ui-scale) * var(--app-scale)));
+    width: calc(100vw / (var(--ui-scale) * var(--app-scale) * var(--os-scale)));
+    height: calc(100vh / (var(--ui-scale) * var(--app-scale) * var(--os-scale)));
     overflow: hidden;
     /* Breakpoints below use this container (in scaled px) instead of the raw window width */
     container: app / inline-size;

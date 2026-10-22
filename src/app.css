@@ -1,9 +1,13 @@
 :root {
   /* UI SCALE: the whole interface is drawn this much larger, like Chrome's zoom
-     (1.1 = 110%). Layout breakpoints follow it automatically. */
+     (1.1 = 110%). Layout breakpoints follow it automatically. Overridden by the app zoom
+     slider in the options menu (uiZoomStore); this is only the starting value. */
   --ui-scale: 1.1;
   /* Extra scale-up for windows larger than 1920 x 1080, set by PatchEditor (1 = none) */
   --app-scale: 1;
+  /* Cancels the OS display scaling when "Ignore Windows display scaling" is on in the
+     options menu (1 / devicePixelRatio), set by PatchEditor (1 = off) */
+  --os-scale: 1;
 
   /* =========================================================================
      1. INTERFACE BACKDROP TINT & BRIGHTNESS CONTROLS
@@ -230,5 +234,5 @@ select:focus-visible {
 
 /* Applies the UI scales to the whole app (viewport-sized boxes divide by them, see App.svelte) */
 html {
-  zoom: calc(var(--ui-scale) * var(--app-scale));
+  zoom: calc(var(--ui-scale) * var(--app-scale) * var(--os-scale));
 }

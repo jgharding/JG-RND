@@ -522,6 +522,26 @@ const SEED_EDITOR_OPEN_KEY = 'rnd_seed_editor_open';
 export const seedEditorOpenStore = writable<boolean>(readStorage(SEED_EDITOR_OPEN_KEY) === '1');
 seedEditorOpenStore.subscribe((open) => writeStorage(SEED_EDITOR_OPEN_KEY, open ? '1' : '0'));
 
+// Options menu: ignore the OS display scaling (e.g. Windows 150%) so the app is sized by the
+// monitor's real pixels, as on a 100%-scaled monitor of the same resolution
+const IGNORE_OS_SCALING_KEY = 'rnd_ignore_os_scaling';
+export const ignoreOsScalingStore = writable<boolean>(readStorage(IGNORE_OS_SCALING_KEY) === '1');
+ignoreOsScalingStore.subscribe((on) => writeStorage(IGNORE_OS_SCALING_KEY, on ? '1' : '0'));
+
+// Options menu: app zoom (the --ui-scale on the root, see app.css). 1.1 = 110%, the default.
+export const UI_ZOOM_DEFAULT = 1.1;
+export const UI_ZOOM_MIN = 0.5;
+export const UI_ZOOM_MAX = 2;
+const UI_ZOOM_KEY = 'rnd_ui_zoom';
+const storedUiZoom = parseFloat(readStorage(UI_ZOOM_KEY) ?? '');
+export const uiZoomStore = writable<number>(
+  storedUiZoom >= UI_ZOOM_MIN && storedUiZoom <= UI_ZOOM_MAX ? storedUiZoom : UI_ZOOM_DEFAULT
+);
+uiZoomStore.subscribe((zoom) => {
+  writeStorage(UI_ZOOM_KEY, String(zoom));
+  document.documentElement.style.setProperty('--ui-scale', String(zoom));
+});
+
 // TYPES TO GENERATE (CC 14 mask: bit 0 = Looping, bit 1 = Drone, bit 2 = Jingle)
 const TYPES_TO_GENERATE_KEY = 'rnd_type_filter';
 

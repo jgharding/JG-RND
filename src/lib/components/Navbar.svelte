@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { midiStore, selectedPatch } from "../stores";
+  import {
+    midiStore,
+    selectedPatch,
+    ignoreOsScalingStore,
+    uiZoomStore,
+    UI_ZOOM_DEFAULT,
+    UI_ZOOM_MIN,
+    UI_ZOOM_MAX,
+  } from "../stores";
   import { midiManager } from "../midi/midiManager";
   import Icon from "./Icon.svelte";
 
@@ -21,12 +29,165 @@
   function handleRefreshMidi() {
     midiManager.rescanPorts();
   }
+
+  // Main options menu, opened from the JG-RND badge
+  let optionsOpen = $state(false);
+  let brandEl: HTMLDivElement;
+  // OS display scaling x browser zoom, read when the menu opens
+  let detectedScale = $state(100);
+  const finePointer = window.matchMedia?.("(pointer: fine)").matches ?? true;
+
+  function toggleOptions() {
+    optionsOpen = !optionsOpen;
+    if (optionsOpen) detectedScale = Math.round((window.devicePixelRatio || 1) * 100);
+  }
+
+  // App zoom slider (percent). Snaps to common values when within ZOOM_SNAP_RANGE of them,
+  // any whole percent in between is allowed. Double-click resets, the readout can be typed in.
+  const ZOOM_SNAP_POINTS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
+  const ZOOM_SNAP_RANGE = 2;
+  const zoomPercent = $derived(Math.round($uiZoomStore * 100));
+  let zoomText = $state("");
+  let zoomEditing = $state(false);
+  // While the slider is dragged its value is only previewed, and applied on release: zooming
+  // live would resize the slider under the pointer and make the drag jump.
+  let zoomDragValue = $state<number | null>(null);
+  const shownZoomPercent = $derived(zoomDragValue ?? zoomPercent);
+
+  function clampZoomPercent(percent: number, snap: boolean) {
+    let value = Math.round(
+      Math.min(UI_ZOOM_MAX * 100, Math.max(UI_ZOOM_MIN * 100, percent)),
+    );
+    if (snap) {
+      const near = ZOOM_SNAP_POINTS.find((p) => Math.abs(p - value) <= ZOOM_SNAP_RANGE);
+      if (near !== undefined) value = near;
+    }
+    return value;
+  }
+
+  function handleZoomSliderInput(e: Event) {
+    zoomDragValue = clampZoomPercent(Number((e.target as HTMLInputElement).value), true);
+  }
+
+  function handleZoomSliderChange() {
+    if (zoomDragValue !== null) uiZoomStore.set(zoomDragValue / 100);
+    zoomDragValue = null;
+  }
+
+  function resetZoom() {
+    uiZoomStore.set(UI_ZOOM_DEFAULT);
+  }
+
+  function startZoomEdit(e: FocusEvent) {
+    zoomEditing = true;
+    zoomText = String(zoomPercent);
+    // Select after Svelte has written the text in
+    requestAnimationFrame(() => (e.target as HTMLInputElement).select());
+  }
+
+  function commitZoomEdit() {
+    const typed = parseFloat(zoomText);
+    if (Number.isFinite(typed)) uiZoomStore.set(clampZoomPercent(typed, false) / 100);
+    zoomEditing = false;
+  }
+
+  function handleZoomKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+    else if (e.key === "Escape") {
+      e.stopPropagation(); // cancel the edit only, keep the menu open
+      zoomEditing = false;
+      (e.target as HTMLInputElement).blur();
+    }
+  }
+
+  function handleWindowPointerDown(e: PointerEvent) {
+    if (optionsOpen && !brandEl.contains(e.target as Node)) optionsOpen = false;
+  }
+
+  function handleWindowKeydown(e: KeyboardEvent) {
+    if (optionsOpen && e.key === "Escape" && !zoomEditing) optionsOpen = false;
+  }
 </script>
+
+<svelte:window
+  onpointerdown={handleWindowPointerDown}
+  onkeydown={handleWindowKeydown}
+/>
 
 <header class="navbar">
   <!-- Brand / Title -->
-  <div class="brand">
-    <div class="brand-badge">JG-RND</div>
+  <div class="brand" bind:this={brandEl}>
+    <button
+      class="brand-badge"
+      class:open={optionsOpen}
+      title="Options"
+      aria-haspopup="true"
+      aria-expanded={optionsOpen}
+      onclick={toggleOptions}
+    >
+      JG-RND
+    </button>
+    {#if optionsOpen}
+      <div class="options-menu" role="menu">
+        <div class="options-heading">OPTIONS</div>
+        <div class="options-section">
+          <div class="options-section-title">DISPLAY</div>
+          <label class="option-row" class:disabled={!finePointer}>
+            <input
+              type="checkbox"
+              bind:checked={$ignoreOsScalingStore}
+              disabled={!finePointer}
+            />
+            <span class="option-text">
+              <span class="option-label">Ignore Windows display scaling</span>
+              <span class="option-hint">
+                {#if finePointer}
+                  Sizes the app by the monitor's real pixels, as on a 100% scaled
+                  display. Also cancels browser zoom while on. Detected scale: {detectedScale}%.
+                {:else}
+                  Desktop only.
+                {/if}
+              </span>
+            </span>
+          </label>
+          <div class="zoom-row">
+            <div class="zoom-header">
+              <label class="option-label" for="app-zoom-slider">App zoom</label>
+              <input
+                class="zoom-value"
+                type="text"
+                inputmode="decimal"
+                aria-label="App zoom percent"
+                title="Click to type a zoom percent"
+                value={zoomEditing ? zoomText : `${shownZoomPercent}%`}
+                oninput={(e) => (zoomText = (e.target as HTMLInputElement).value)}
+                onfocus={startZoomEdit}
+                onblur={commitZoomEdit}
+                onkeydown={handleZoomKeydown}
+              />
+            </div>
+            <input
+              id="app-zoom-slider"
+              class="zoom-slider"
+              type="range"
+              min={UI_ZOOM_MIN * 100}
+              max={UI_ZOOM_MAX * 100}
+              step="1"
+              value={shownZoomPercent}
+              title="Double-click to reset to {Math.round(UI_ZOOM_DEFAULT * 100)}%"
+              oninput={handleZoomSliderInput}
+              onchange={handleZoomSliderChange}
+              ondblclick={resetZoom}
+            />
+            <span class="option-hint">
+              Snaps to common sizes. Double-click to reset to {Math.round(
+                UI_ZOOM_DEFAULT * 100,
+              )}%.
+            </span>
+          </div>
+        </div>
+      </div>
+    {/if}
     <div class="brand-text">
       <span class="brand-title">RND by CYMA FORMA & BAMBOUNOU</span>
       <span class="brand-sub">PATCH LIBRARIAN & EDITOR</span>
@@ -107,6 +268,7 @@
   }
 
   .brand {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -126,6 +288,137 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .brand-badge:hover,
+  .brand-badge.open {
+    background: var(--color-orange-light);
+    box-shadow: 0 0 10px var(--color-orange-glow);
+  }
+
+  .options-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 300px;
+    background: var(--bg-panel);
+    border: 1px solid var(--color-orange);
+    border-radius: 4px;
+    box-shadow:
+      var(--box-shadow-panel),
+      0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 12px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .options-heading {
+    font-family: "Chakra Petch", monospace;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    color: var(--color-orange-text);
+  }
+
+  .options-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--bg-sub-box);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 8px 10px;
+  }
+
+  .options-section-title {
+    font-family: "Chakra Petch", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #718096;
+  }
+
+  .option-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .option-row.disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .option-row input {
+    margin: 2px 0 0;
+    accent-color: var(--color-orange);
+    cursor: inherit;
+  }
+
+  .option-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .option-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  .zoom-row {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .zoom-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .zoom-value {
+    width: 56px;
+    background: var(--bg-surface);
+    color: var(--color-orange-text);
+    border: 1px solid var(--border-box);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    text-align: right;
+    outline: none;
+    cursor: text;
+  }
+
+  .zoom-value:focus {
+    border-color: var(--color-orange);
+  }
+
+  .zoom-slider {
+    width: 100%;
+    margin: 0;
+    accent-color: var(--color-orange);
+    cursor: pointer;
+  }
+
+  .option-hint {
+    font-size: 10px;
+    line-height: 1.4;
+    color: #a0aec0;
   }
 
   .brand-text {

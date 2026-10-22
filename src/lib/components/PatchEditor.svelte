@@ -13,6 +13,9 @@
     reverbRoomSizeStore,
     activeProceduralLevels,
     activeTracks,
+    ignoreOsScalingStore,
+    uiZoomStore,
+    UI_ZOOM_DEFAULT,
   } from "../stores";
   import { midiManager } from "../midi/midiManager";
   import HardwareButton from "./HardwareButton.svelte";
@@ -24,6 +27,7 @@
   // Top row layout by editor width (knobs never shrink):
   //  - full: trigger button + all five mixer boxes on one row, reverb controls below
   //  - MASTER drops into the space left of REVERB CONTROLS, button still full height
+  //  - then REVERB CONTROLS fold onto two rows beside MASTER, button still full size
   //  - narrower still: smaller button, knob groups wrap freely
   // The widths each layout needs are measured from the rendered row (button + gap + knobs
   // box), so a layout only changes when the row really stops fitting. These are only the
@@ -31,16 +35,20 @@
   const ROW_GAP = 10; // .master-row gap
   let fullRowWidth = $state(1173); // editor px the full top row needs
   let droppedRowWidth = $state(1056); // editor px the top row needs with MASTER dropped
+  let foldedRowWidth = $state(940); // editor px the top row needs with REVERB CONTROLS folded
   let editorEl: HTMLDivElement;
   let triggerPanelEl: HTMLDivElement;
   let knobsSectionEl: HTMLElement;
   let editorScaleEl: HTMLDivElement;
   let mixerAreaEl: HTMLDivElement;
   let lowerRowEl: HTMLDivElement;
+  let masterRowEl: HTMLDivElement;
   let editorWidth = $state(0);
   // The trigger button is a square as tall as the knobs box (set explicitly: deriving its
   // width from a stretched height is unreliable and collapsed it to 0 px wide)
   let knobsBoxHeight = $state(0);
+  // Full button size, kept while the folded reverb makes the knobs box taller
+  let buttonSize = $state(314);
 
   // Wider than the default 1920 x 1080 window, the WHOLE app (librarian, editor, header,
   // status bar) scales up together as one piece, blending two things:
@@ -51,10 +59,26 @@
   // The scale is applied as --app-scale on the root (see app.css), on top of --ui-scale.
   const DEFAULT_WINDOW_WIDTH = 1920;
   const MAX_LAYOUT_STRETCH = 1.35;
-  let uiScale = 1; // --ui-scale from app.css
+  // --ui-scale: the app zoom from the options menu. The auto scale-up is worked out at the
+  // default zoom, so the app zoom then multiplies the result (zooming out on a big window
+  // makes it smaller rather than being scaled straight back up to fit the height).
+  const uiScale = $derived($uiZoomStore);
   let appliedScale = 1; // --app-scale currently on the root
-  let windowWidth = $state(DEFAULT_WINDOW_WIDTH);
-  let windowHeight = $state(1080);
+  // "Ignore Windows display scaling" (options menu): the root is also zoomed by
+  // 1 / devicePixelRatio, and the window is measured in device pixels instead of CSS px.
+  // devicePixelRatio includes the browser zoom, so that is cancelled too. Desktop only
+  // (phones have a ratio of 2-3 and would become unreadable).
+  let devicePixelRatio = $state(1);
+  const finePointer = window.matchMedia?.("(pointer: fine)").matches ?? true;
+  const osScale = $derived(
+    $ignoreOsScalingStore && finePointer && devicePixelRatio > 0 ? 1 / devicePixelRatio : 1,
+  );
+  let appliedOsScale = 1; // --os-scale currently on the root
+  // Window size in CSS px, and in the px the layout works in (device px when ignoring OS scaling)
+  let innerWidth = $state(DEFAULT_WINDOW_WIDTH);
+  let innerHeight = $state(1080);
+  const windowWidth = $derived(innerWidth / osScale);
+  const windowHeight = $derived(innerHeight / osScale);
   // Height of the standard full editor layout (unscaled), the reference for the height limit.
   // Only re-measured while unscaled in the full layout, so the scale can't feed back into it
   // (that loop made some window sizes flicker). 852 px is the measured value.
@@ -64,13 +88,16 @@
   const appScale = $derived.by(() => {
     if (windowWidth <= DEFAULT_WINDOW_WIDTH || chromeHeight <= 0) return 1;
     const widthScale = windowWidth / DEFAULT_WINDOW_WIDTH;
-    const heightScale = windowHeight / (uiScale * (referenceHeight * 1.01 + chromeHeight)); // 1%: rounding margin
+    const heightScale =
+      windowHeight / (UI_ZOOM_DEFAULT * (referenceHeight * 1.01 + chromeHeight)); // 1%: rounding margin
     // Rounded down (never overshoots the height) so re-layout can't make it hunt
     return Math.floor(Math.min(widthScale, Math.max(1, heightScale)) * 100) / 100;
   });
   $effect(() => {
     appliedScale = appScale;
+    appliedOsScale = osScale;
     document.documentElement.style.setProperty("--app-scale", String(appScale));
+    document.documentElement.style.setProperty("--os-scale", String(osScale));
   });
   // Editor width at the default 1920 px window: every extra (unscaled) px goes to the editor
   const baseWidth = $derived(
@@ -86,12 +113,17 @@
   // Width the editor's content is laid out in
   const layoutWidth = $derived(Math.min(editorWidth, maxLayoutWidth ?? Infinity));
 
-  const masterDropped = $derived(
-    layoutWidth > 0 && layoutWidth < fullRowWidth && layoutWidth >= droppedRowWidth,
+  // MASTER is beside REVERB CONTROLS in both the dropped and folded layouts
+  const reverbFolded = $derived(
+    layoutWidth > 0 && layoutWidth < droppedRowWidth && layoutWidth >= foldedRowWidth,
   );
-  const masterWrapped = $derived(layoutWidth > 0 && layoutWidth < droppedRowWidth);
+  const masterDropped = $derived(
+    (layoutWidth > 0 && layoutWidth < fullRowWidth && layoutWidth >= droppedRowWidth) ||
+      reverbFolded,
+  );
+  const masterWrapped = $derived(layoutWidth > 0 && layoutWidth < foldedRowWidth);
 
-  // In the full and dropped layouts the knobs box keeps its natural width, so the row's
+  // In the full, dropped and folded layouts the knobs box keeps its natural width, so the row's
   // needed width can be read straight off the elements (the wrapped layout is flexible).
   // The knobs box stretches to the row width, so its natural width is rebuilt from its
   // content: the wider of the mixer row and the lower row, plus the box's padding and border.
@@ -115,33 +147,40 @@
     const knobsNatural =
       boxFrame + Math.max(contentRowWidth(mixerAreaEl), contentRowWidth(lowerRowEl));
     const needed = Math.ceil(triggerPanelEl.offsetWidth + ROW_GAP + knobsNatural);
-    if (masterDropped) droppedRowWidth = needed;
+    if (reverbFolded) foldedRowWidth = needed;
+    else if (masterDropped) droppedRowWidth = needed;
     else fullRowWidth = needed;
   }
 
   $effect(() => {
     void editorWidth;
     void masterDropped;
+    void reverbFolded;
     void masterWrapped;
     measureTopRow();
   });
 
   onMount(() => {
-    uiScale =
-      parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--ui-scale"),
-      ) || 1;
     const observer = new ResizeObserver(([entry]) => {
-      windowWidth = window.innerWidth;
-      windowHeight = window.innerHeight;
+      innerWidth = window.innerWidth;
+      innerHeight = window.innerHeight;
+      devicePixelRatio = window.devicePixelRatio || 1;
       editorWidth = entry.contentRect.width;
       // Everything above and below the editor content, in unscaled px
       chromeHeight =
-        window.innerHeight / (uiScale * appliedScale) - entry.contentRect.height;
+        window.innerHeight / (uiScale * appliedScale * appliedOsScale) -
+        entry.contentRect.height;
     });
     observer.observe(editorEl);
+    // Moving to a monitor with another scaling (or browser zoom) changes the ratio
+    const onWindowResize = () => (devicePixelRatio = window.devicePixelRatio || 1);
+    window.addEventListener("resize", onWindowResize);
     const knobsObserver = new ResizeObserver(() => {
       knobsBoxHeight = knobsSectionEl.offsetHeight;
+      // Only the full and dropped layouts give the full button size. Checked on the rendered
+      // row (not the layout state) so a stale height from the taller folded box never sticks.
+      const row = masterRowEl.classList;
+      if (!row.contains("folded") && !row.contains("wrapped")) buttonSize = knobsBoxHeight;
     });
     knobsObserver.observe(knobsSectionEl);
     const contentObserver = new ResizeObserver(() => {
@@ -155,6 +194,7 @@
       observer.disconnect();
       knobsObserver.disconnect();
       contentObserver.disconnect();
+      window.removeEventListener("resize", onWindowResize);
     };
   });
 
@@ -292,13 +332,18 @@
     style:max-width={maxLayoutWidth ? `${maxLayoutWidth}px` : null}
   >
   <!-- Top Master Row: Big Button Setup + Knobs Container Box -->
-  <div class="master-row" class:wrapped={masterWrapped}>
+  <div
+    class="master-row"
+    class:wrapped={masterWrapped}
+    class:folded={reverbFolded}
+    bind:this={masterRowEl}
+  >
     <!-- Big Button Setup (Outside the knobs container) -->
     <div
       class="hardware-trigger-panel"
       bind:this={triggerPanelEl}
-      style:width={!masterWrapped && knobsBoxHeight ? `${knobsBoxHeight}px` : null}
-      style:height={!masterWrapped && knobsBoxHeight ? `${knobsBoxHeight}px` : null}
+      style:width={!masterWrapped && knobsBoxHeight ? `${buttonSize}px` : null}
+      style:height={!masterWrapped && knobsBoxHeight ? `${buttonSize}px` : null}
     >
       <HardwareButton />
     </div>
@@ -507,6 +552,8 @@
     gap: 8px;
     box-shadow: var(--box-shadow-panel);
     flex: 1 0 auto; /* fills the row (knob groups stay right-aligned), never shrinks */
+    /* Natural height (not stretched to the button), as the button is sized from it */
+    align-self: flex-start;
   }
 
   .controls-mixer-area {
@@ -831,6 +878,21 @@
     .tracks-grid {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
+
+  /* Folded: REVERB CONTROLS on two rows (4 knobs, then ROOM SIZE + the DECAY box), so MASTER
+     and the reverb fit under the channel boxes and the button keeps its full size */
+  .master-row.folded .hardware-trigger-panel {
+    align-self: flex-start;
+  }
+
+  .master-row.folded .reverb-knobs-row {
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+  }
+
+  .master-row.folded .decay-composite-box {
+    grid-column: span 2;
   }
 
   /* Too narrow to scale: a smaller trigger button beside the knobs box, whose knob groups wrap */
