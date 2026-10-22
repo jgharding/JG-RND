@@ -22,7 +22,7 @@
   import GlobalEditor from "./GlobalEditor.svelte";
   import TrackEditor from "./TrackEditor.svelte";
   import Knob from "./Knob.svelte";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
 
   // Top row layout by editor width (knobs never shrink):
   //  - full: trigger button + all five mixer boxes on one row, reverb controls below
@@ -85,13 +85,25 @@
   let referenceHeight = $state(852);
   // Height around the editor content (header, status bar, padding) in unscaled px; constant
   let chromeHeight = $state(0);
-  const appScale = $derived.by(() => {
+  const idealScale = $derived.by(() => {
     if (windowWidth <= DEFAULT_WINDOW_WIDTH || chromeHeight <= 0) return 1;
     const widthScale = windowWidth / DEFAULT_WINDOW_WIDTH;
     const heightScale =
       windowHeight / (UI_ZOOM_DEFAULT * (referenceHeight * 1.01 + chromeHeight)); // 1%: rounding margin
     // Rounded down (never overshoots the height) so re-layout can't make it hunt
     return Math.floor(Math.min(widthScale, Math.max(1, heightScale)) * 100) / 100;
+  });
+  // The scale feeds back into the measurements it is worked out from (zoom rounding shifts
+  // chromeHeight by a fraction of a px), which made it flip between neighbouring values on
+  // big screens (e.g. 1.98 <-> 1.99 maximised on UHD). So it only steps UP on a clear change;
+  // going down is always immediate, so the content never overflows.
+  const SCALE_STEP_UP = 0.03;
+  let appScale = $state(1);
+  $effect(() => {
+    const ideal = idealScale;
+    untrack(() => {
+      if (ideal < appScale || ideal >= appScale + SCALE_STEP_UP || ideal === 1) appScale = ideal;
+    });
   });
   $effect(() => {
     appliedScale = appScale;
