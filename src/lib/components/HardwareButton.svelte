@@ -1,6 +1,5 @@
 <script lang="ts">
   import { midiManager } from "../midi/midiManager";
-  import { isFirmwareModalOpen } from "../stores";
   import rndChassis from "../../assets/rnd_chassis.png";
   import buttonNoise from "../../assets/button_noise.png";
 
@@ -12,10 +11,6 @@
     midiManager.triggerHardware();
     setTimeout(() => (isPressed = false), 150);
   }
-
-  function handleChassisClick() {
-    isFirmwareModalOpen.set(true);
-  }
 </script>
 
 <div class="hardware-chassis-container">
@@ -23,17 +18,6 @@
   <div
     class="chassis-square"
     style="background-image: url({rndChassis});"
-    onclick={handleChassisClick}
-    onkeydown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        handleChassisClick();
-      }
-    }}
-    role="button"
-    tabindex="0"
-    title="Click orange surround to open JG-RND Patcher"
-    aria-label="RND Hardware Chassis (click surround to open JG-RND Patcher)"
   >
     <!-- Simple almost-flat, slightly concave circular button with noise texture (no ridge/lip) -->
     <button

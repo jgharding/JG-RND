@@ -4,6 +4,7 @@
     midiStore,
     selectedPatch,
     ignoreOsScalingStore,
+    isFirmwareModalOpen,
     uiZoomStore,
     UI_ZOOM_DEFAULT,
     UI_ZOOM_MIN,
@@ -103,6 +104,11 @@
       zoomEditing = false;
       (e.target as HTMLInputElement).blur();
     }
+  }
+
+  function openFirmwareUpdate() {
+    optionsOpen = false;
+    isFirmwareModalOpen.set(true);
   }
 
   function handleWindowPointerDown(e: PointerEvent) {
@@ -207,6 +213,9 @@
             <span class="option-hint">Windows, macOS and Linux.</span>
           {/if}
         </div>
+        <button type="button" class="firmware-btn" onclick={openFirmwareUpdate}>
+          UPDATE FIRMWARE
+        </button>
       </div>
     {/if}
     <div class="brand-text">
@@ -313,13 +322,13 @@
     cursor: pointer;
     transition:
       background 0.15s ease,
-      box-shadow 0.15s ease;
+      color 0.15s ease;
   }
 
   .brand-badge:hover,
   .brand-badge.open {
-    background: var(--color-orange-light);
-    box-shadow: 0 0 10px var(--color-orange-glow);
+    background: #ffffff;
+    color: #000000;
   }
 
   .options-menu {
@@ -434,6 +443,27 @@
     margin: 0;
     accent-color: var(--color-orange);
     cursor: pointer;
+  }
+
+  .firmware-btn {
+    background: var(--color-orange);
+    color: #0b0c0e;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: "Chakra Petch", monospace;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .firmware-btn:hover {
+    background: #ffffff;
+    color: #000000;
   }
 
   .option-link {

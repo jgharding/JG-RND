@@ -93,7 +93,7 @@
     </div>
   </footer>
 
-  <!-- JG-RND Patcher (opened by clicking the orange chassis surround of the big button) -->
+  <!-- JG-RND Patcher (opened from UPDATE FIRMWARE in the options menu, or the status bar) -->
   <FirmwareModal />
 </div>
 
