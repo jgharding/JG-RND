@@ -49,3 +49,9 @@ AGENTS.md
 # Only public/firmware/jgpatch-0NN.json ships. Remove the public/firmware line to host the .bin again.
 public/firmware/*.bin
 JG-RND FIRMWARE PATCH/*.bin
+
+# Claude Plans
+Plans/
+
+# Electron desktop builds
+release/

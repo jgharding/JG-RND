@@ -42,6 +42,11 @@
     if (optionsOpen) detectedScale = Math.round((window.devicePixelRatio || 1) * 100);
   }
 
+  // Web version (GitHub Pages) and desktop apps (GitHub Releases) link to each other
+  const isDesktopApp = navigator.userAgent.includes("Electron");
+  const RELEASES_URL = "https://github.com/jgharding/JG-RND/releases/latest";
+  const WEB_APP_URL = "https://jgharding.github.io/JG-RND/";
+
   // App zoom slider (percent). Snaps to common values when within ZOOM_SNAP_RANGE of them,
   // any whole percent in between is allowed. Double-click resets, the readout can be typed in.
   const ZOOM_SNAP_POINTS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
@@ -185,6 +190,22 @@
               )}%.
             </span>
           </div>
+        </div>
+        <div class="options-section">
+          <div class="options-section-title">APP</div>
+          {#if isDesktopApp}
+            <a class="option-link" href={RELEASES_URL} target="_blank" rel="noopener">
+              Check for a new version
+            </a>
+            <a class="option-link" href={WEB_APP_URL} target="_blank" rel="noopener">
+              Open the web version
+            </a>
+          {:else}
+            <a class="option-link" href={RELEASES_URL} target="_blank" rel="noopener">
+              Download the desktop app
+            </a>
+            <span class="option-hint">Windows, macOS and Linux.</span>
+          {/if}
         </div>
       </div>
     {/if}
@@ -413,6 +434,17 @@
     margin: 0;
     accent-color: var(--color-orange);
     cursor: pointer;
+  }
+
+  .option-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-orange-text);
+    text-decoration: none;
+  }
+
+  .option-link:hover {
+    text-decoration: underline;
   }
 
   .option-hint {

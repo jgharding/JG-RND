@@ -1,0 +1,2 @@
+# Linux install scripts must keep LF line endings
+*.sh text eol=lf

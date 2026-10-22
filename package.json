@@ -2,17 +2,25 @@
   "name": "jg-rnd",
   "private": true,
   "version": "1.0.0",
+  "description": "Patch librarian, editor and firmware patcher for the Cyma Forma RND synth",
+  "author": "jgharding <jgharding@users.noreply.github.com>",
+  "homepage": "https://jgharding.github.io/JG-RND/",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "desktop": "vite build && electron .",
+    "desktop:dist": "vite build && electron-builder --publish never"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tsconfig/svelte": "^5.0.8",
     "@types/node": "^24.13.3",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",
     "typescript": "~6.0.2",
@@ -20,5 +28,79 @@
   },
   "dependencies": {
     "idb": "^8.0.4"
+  },
+  "allowScripts": {
+    "electron-winstaller": false
+  },
+  "build": {
+    "appId": "com.jgharding.jgrnd",
+    "productName": "JG-RND",
+    "artifactName": "JG-RND-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "icon": "electron/icon.png",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jgharding",
+        "repo": "JG-RND",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.music",
+      "identity": null
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Audio",
+      "maintainer": "jgharding <jgharding@users.noreply.github.com>"
+    },
+    "deb": {
+      "afterInstall": "electron/linux-after-install.sh",
+      "afterRemove": "electron/linux-after-remove.sh"
+    }
   }
 }
