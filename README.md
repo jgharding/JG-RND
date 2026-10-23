@@ -1,5 +1,9 @@
 # JG-RND - Web-Based Librarian and Patch Editor For Cyma Forma RND With Custom Firmware Patch
 
+**[YOUTUBE TUTORIAL AND OVERVIEW](https://youtu.be/XlZPPMOjZqM)**
+
+[![Patch editor walkthrough - click to watch the YouTube tutorial](readme_resources/patch-editor-tutorial.webp)](https://youtu.be/XlZPPMOjZqM)
+
 A single-page web-MIDI editor for Cyma Forma & Bambounou RND with custom firmware, it builds in a layer of conversation with the RND allowing you to tweak, store and reload randomised patches.
 
 Plug in the RND and the web interface should detect and select it, once you give it permissions. 
@@ -19,7 +23,7 @@ Future versions are planned to include an entirely separate mode of my own, and 
 * Grab the current seed from the device, or reset changes made in the interface.
 * Export and Import patch libraries as CSV, which can be manually edited easily.
 * Reorder library patches with drag and drop.
-* Patch tags that are searchable.
+* Add patch tags that are searchable.
 * Edit store and recall BPM.
 * Edit store and recall Key Root and Scale.
 * Edit store and recall exact randomised re-rolls of Synth Engine sound.
@@ -80,5 +84,5 @@ You can press Get + Reset Seed to return the patch to its generates state, as lo
 The big orange numbers are the part of the SysEx string that generates the random seed, so you can type random pairs of figures in here (1-9 and A-F, hexidecmial) to make patches in a different fun way.
 
 ## PATCH EDITOR
-I've yet to write up these instructions in text form and don't want to use AI for it, but there's a video tutorial here:
+I've yet to write up these instructions in text form and don't want to use AI for it, but there's a video tutorial here: [YOUTUBE TUTORIAL AND OVERVIEW](https://youtu.be/XlZPPMOjZqM)
 
