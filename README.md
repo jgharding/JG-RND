@@ -1,4 +1,4 @@
-# JG-RND - Web-Based Librarian and Patch Editor For Cyma Forma RND With Custom Firmware Patch
+# JG-RND - Unoffciial Librarian and Patch Editor For Cyma Forma RND With Custom Firmware Patch
 
 **[YOUTUBE TUTORIAL AND OVERVIEW](https://youtu.be/XlZPPMOjZqM)**
 
