@@ -10,6 +10,8 @@ Plug in the RND and the web interface should detect and select it, once you give
 
 Future versions are planned to include an entirely separate mode of my own, and other features.
 
+Firmware flashing on the RND is very safe. The partticular hardware setup means the bootloader is built inot the chip ROM. As a result evern a failed flash can be recovered. Neither this editor or the Cyma Forma official updater allow you to overwrite any bytes that would brick the device.
+
 ## DISCLAIMER
 
 **Use at your own risk.** This editor and the JGpatch firmware are an unofficial, independent project. They are not made, endorsed, or supported by Cyma Forma or Bambounou, and I have no affiliation with them.
