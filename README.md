@@ -10,6 +10,15 @@ Plug in the RND and the web interface should detect and select it, once you give
 
 Future versions are planned to include an entirely separate mode of my own, and other features.
 
+## DISCLAIMER
+
+**Use at your own risk.** This editor and the JGpatch firmware are an unofficial, independent project. They are not made, endorsed, or supported by Cyma Forma or Bambounou, and I have no affiliation with them.
+
+* The software and firmware are provided "as is", without warranty of any kind, as set out in the [LICENSE](LICENSE).
+* Flashing modified firmware is done entirely at your own choice and risk. I accept no responsibility or liability for any damage, data loss, malfunction, voided warranty, or other consequences arising from using this software or firmware on your device.
+* There is no official support for this project, from me or from Cyma Forma. Please do not contact Cyma Forma for help with the editor or the patched firmware. I'm happy to hear bug reports, but I can't promise fixes or help.
+* You can return to official firmware at any time using Cyma Forma's own update page.
+
 ## FIRMWARE PATCH AND EDITOR FEATURES:
 
 * 6 - Channel audio (Stereo mix on 1 and 2, raw instruments on 3-6)
