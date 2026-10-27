@@ -1,0 +1,56 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Scratch / temporary test scripts
+scratch/
+
+# Local session prompt log (excluded from git)
+PROMPT_LOG.md
+
+# Process documentation & exported snapshots
+Documentation Of Process/
+
+# Firmware patch working files and rules
+FIRMWARE PATCH WORKING FILES/
+JG-RND FIRMWARE PATCH/FIRMWARE PATCH WORKING FILES/
+FIRMWARE-PATCHING-RULES.md
+JG-RND FIRMWARE PATCH/FIRMWARE-PATCHING-RULES.md
+
+# Agent guidelines and session instructions
+AGENTS.md
+
+# FIRMWARE_SWITCH (src/lib/types.ts) is true: the full patched public/firmware/RNDsynth-v1.3-JGpatch-0NN.bin
+# is hosted. When it is false, add `public/firmware/*.bin` back here so only jgpatch-0NN.json ships.
+JG-RND FIRMWARE PATCH/*.bin
+
+# Claude Plans
+Plans/
+
+# Electron desktop builds
+release/
